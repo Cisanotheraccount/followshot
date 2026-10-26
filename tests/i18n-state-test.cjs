@@ -100,7 +100,7 @@ function overlayInBothLanguages(browser, chinese, english, name) {
 }
 
 const browser = createBrowser();
-screenInBothLanguages(browser, '原创插画演示 · 非真实视频', 'Original illustration demo · Not a real video', 'feed');
+screenInBothLanguages(browser, '创作者原创影像 · 授权演示', 'Original creator footage · Authorized demo', 'feed');
 browser.click('share');
 overlayInBothLanguages(browser, '分享至', 'Share to', 'share');
 browser.setLanguage('zh');
@@ -110,10 +110,10 @@ browser.click('learn');
 browser.tick(3);
 const analysisTimers = browser.timers.size;
 browser.setLanguage('zh');
-includes(browser, '正在理解故事结构', 'analysis screen renders in Chinese');
+includes(browser, '正在整理参考片段', 'analysis screen renders in Chinese');
 includes(browser, 'width:30%', 'analysis progress survives Chinese rerender');
 browser.setLanguage('en');
-includes(browser, 'Understanding the story structure', 'analysis screen renders in English');
+includes(browser, 'Preparing the reference windows', 'analysis screen renders in English');
 includes(browser, 'width:30%', 'analysis progress survives English rerender');
 check(browser.timers.size === analysisTimers, 'analysis language switch does not replace or cancel timers');
 browser.click('cancel-analysis');
@@ -125,11 +125,11 @@ browser.click('use-preset');
 check(browser.state().screen === 'plan', 'cancel flow can continue with the editable preset');
 
 screenInBothLanguages(browser, '你的拍摄计划', 'Your shot plan', 'plan');
-includes(browser, 'Set the scene', 'default shot title localizes in the plan');
-includes(browser, 'Wide · Locked-off', 'default shot type localizes in the plan');
-includes(browser, 'Keep your phone steady', 'default shot tip localizes in the plan');
+includes(browser, 'Capture the feeling', 'default shot title localizes in the plan');
+includes(browser, 'Medium · Human moment', 'default shot type localizes in the plan');
+includes(browser, 'Frame a natural interaction, keep the camera steady', 'default shot tip localizes in the plan');
 browser.click('reference');
-overlayInBothLanguages(browser, '原始参考 · 自制插画', 'Original reference · Original illustration', 'reference');
+overlayInBothLanguages(browser, '原始参考 · 真实视频', 'Original reference · Real video', 'reference');
 browser.click('close-overlay');
 browser.elements.reset.onclick();
 overlayInBothLanguages(browser, '重新开始这次演示？', 'Restart this demo?', 'reset');
@@ -153,7 +153,7 @@ check(browser.state().shots[0].tipEdited === true, 'creator tip is marked as aut
 
 browser.click('start-capture');
 screenInBothLanguages(browser, '模拟相机 · 不调用摄像头', 'Simulated camera · No camera access', 'capture');
-includes(browser, 'Wide · Locked-off', 'capture uses the localized default shot type');
+includes(browser, 'Medium · Human moment', 'capture uses the localized default shot type');
 browser.click('grid');
 check(browser.html().includes('<div class="gridlines" hidden>'), 'grid can be hidden before recording');
 browser.click('record');
@@ -258,7 +258,7 @@ reloaded.elements.reset.onclick();
 reloaded.setLanguage('en');
 reloaded.click('reset-confirmed');
 check(reloaded.language() === 'en' && reloaded.storage[LANGUAGE_KEY] === 'en', 'reset keeps the selected language preference');
-includes(reloaded, 'Original illustration demo · Not a real video', 'reset feed stays in English');
+includes(reloaded, 'Original creator footage · Authorized demo', 'reset feed stays in English');
 
 const legacyDefaults = {
   screen: 'preview', current: 0, title: '属于我的手冲早晨', caption: true, draft: true,
@@ -273,12 +273,42 @@ const legacyDefaults = {
 const legacyStorage = {[STATE_KEY]: JSON.stringify(legacyDefaults), [LANGUAGE_KEY]: 'en'};
 const legacy = createBrowser({storage: legacyStorage, language: 'en'});
 legacy.click('resume');
-includes(legacy, 'My pour-over morning', 'stored legacy default story title localizes');
-includes(legacy, 'Set the scene', 'stored legacy default caption localizes');
+includes(legacy, 'My graduation story', 'stored legacy default story title migrates and localizes');
+includes(legacy, 'Capture the feeling', 'stored legacy default caption migrates and localizes');
 legacy.go('plan');
-includes(legacy, 'Wide · Locked-off', 'stored legacy default shot fields localize');
+includes(legacy, 'Medium · Human moment', 'stored legacy default shot fields migrate and localize');
 legacy.setLanguage('zh');
-includes(legacy, '先交代环境', 'stored legacy defaults can switch back to Chinese');
+includes(legacy, '留住人物情绪', 'migrated legacy defaults can switch back to Chinese');
+
+// Updating the example must never rewrite text that a creator authored.
+const explicitlyOwned = JSON.parse(JSON.stringify(legacyDefaults));
+explicitlyOwned.titleEdited = true;
+explicitlyOwned.shots.forEach(shot => { shot.titleEdited = true; shot.typeEdited = true; shot.tipEdited = true; });
+const owned = createBrowser({storage:{[STATE_KEY]:JSON.stringify(explicitlyOwned)},language:'en'});
+owned.click('resume');
+includes(owned, '属于我的手冲早晨', 'explicitly authored legacy-looking story title is not migrated or translated');
+owned.go('plan');
+includes(owned, '先交代环境', 'explicitly authored legacy-looking shot title remains unchanged');
+includes(owned, '手机放稳，让桌面与窗边光线一起入镜。', 'explicitly authored legacy-looking shot tip remains unchanged');
+owned.setLanguage('zh'); owned.setLanguage('en');
+check(owned.state().title === explicitlyOwned.title && owned.state().titleEdited === true, 'language toggles preserve authored legacy title and ownership flag');
+check(owned.state().shots[0].tip === explicitlyOwned.shots[0].tip && owned.state().shots[0].tipEdited === true, 'language toggles preserve authored legacy tip and ownership flag');
+
+const unflaggedAuthored = JSON.parse(JSON.stringify(legacyDefaults));
+unflaggedAuthored.title = '用户旧标题 / My own title';
+unflaggedAuthored.shots[0].title = '用户旧镜头 / My own shot';
+unflaggedAuthored.shots[0].type = '用户旧景别 / My own framing';
+unflaggedAuthored.shots[0].tip = '用户旧提示 / Keep <my> words';
+const unflagged = createBrowser({storage:{[STATE_KEY]:JSON.stringify(unflaggedAuthored)},language:'en'});
+unflagged.click('resume');
+includes(unflagged, '用户旧标题 / My own title', 'unflagged custom legacy title is inferred as authored');
+unflagged.go('plan');
+includes(unflagged, '用户旧镜头 / My own shot', 'unflagged custom legacy shot title is inferred as authored');
+includes(unflagged, '用户旧景别 / My own framing', 'unflagged custom legacy shot type is inferred as authored');
+includes(unflagged, '用户旧提示 / Keep &lt;my&gt; words', 'unflagged custom legacy tip remains authored and HTML-escaped');
+check(unflagged.state().shots[0].tipEdited === true, 'legacy custom tip ownership is explicitly retained after save');
+unflagged.setLanguage('zh'); unflagged.setLanguage('en');
+includes(unflagged, '用户旧提示 / Keep &lt;my&gt; words', 'legacy custom tip survives repeated language switching');
 
 const malformed = {
   screen: 'preview', current: 99, title: 'bad', caption: true, draft: true,
@@ -294,6 +324,6 @@ const recoveredIds = recovered.state().shots.map(shot => shot.id);
 check(new Set(recoveredIds).size === 4 && recoveredIds.join(',') === '1,2,3,4', 'next save replaces malformed duplicate IDs with safe defaults');
 
 const invalidJson = createBrowser({storage: {[STATE_KEY]: '{not valid JSON', [LANGUAGE_KEY]: 'en'}, language: 'en'});
-includes(invalidJson, 'Original illustration demo · Not a real video', 'invalid stored JSON falls back safely');
+includes(invalidJson, 'Original creator footage · Authorized demo', 'invalid stored JSON falls back safely');
 
 console.log(`ALL ${checks} I18N/STATE VM TESTS PASSED`);

@@ -17,12 +17,23 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
   let currentLanguage = language;
   let now = 1000;
   const interactions = [];
+  const targets = {};
 
   const element = () => ({
-    innerHTML: '', textContent: '', style: {}, children: [], dataset: {},
+    innerHTML: '', textContent: '', style: {}, children: [], dataset: {}, attributes: {},
     classList: {add() {}, remove() {}, toggle() {}},
-    setAttribute() {}, focus() { interactions.push(['focus', this.selector || '']); }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
-    querySelector(selector) { const result = element(); result.selector = selector; return result; },
+    setAttribute(name, value) { this.attributes[name] = String(value); }, focus() { interactions.push(['focus', this.selector || '']); }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
+    querySelector(selector) {
+      const result = element(); result.selector = selector;
+      const action = selector.match(/^\[data-action="([^"]+)"\]$/)?.[1];
+      if (action) {
+        result.dataset.action = action;
+        const markup = [...(elements.app?.innerHTML || '').matchAll(/<button\b([^>]*)>/g)].find(match => match[1].includes(`data-action="${action}"`));
+        result.disabled = !markup || /\bdisabled(?:\s|=|$)/.test(markup[1]);
+        result.click = () => { if (!result.disabled) { interactions.push(['click',selector]); handlers.click({target:{closest:()=>result}}); } };
+      }
+      targets[selector] = result; return result;
+    },
     querySelectorAll() { return []; },
     insertAdjacentHTML(_position, source) { this.innerHTML += source; this.lastElementChild = element(); },
     addEventListener(name, callback) { handlers[name] = callback; }
@@ -55,7 +66,7 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
   vm.runInContext(fs.readFileSync(APP_PATH, 'utf8'), context, {filename: APP_PATH});
 
   return {
-    handlers, timers, elements, storage, interactions,
+    handlers, timers, elements, storage, interactions, targets,
     advance(ms) { now += ms; },
     replay() { elements['guide-replay'].onclick(); },
     escape() { handlers['document:keydown']({key:'Escape', preventDefault() {}}); },
@@ -272,4 +283,63 @@ guide(unselectedReload, 'reference', 'reference overlay language switch');
 unselectedReload.click('close-overlay');
 guide(unselectedReload, 'record', 'close reference returns to required action');
 check(stateData(unselectedReload) === preserved, 'reference and language do not change draft progress');
+// The guided path invokes the same real controls as manual interaction. It
+// never simulates an extra click on a publish/reset confirmation.
+const guided = createBrowser({language:'en'});
+includes(guided, 'Next: open Share', 'first guided action names the specific next control');
+check(guided.targets['[data-action="share"]'].attributes['data-guide-label'] === 'Next step', 'guide target has a visible textual marker, not outline alone');
+check(guided.targets['[data-action="share"]'].attributes['aria-describedby'] === 'step-guide-message', 'guide target is linked to its contextual explanation');
+guided.click('guide-next',{guideAction:'share'});
+guide(guided,'learn','Next opens the actual Share control');
+check(guided.interactions.some(item=>item[0]==='click'&&item[1]==='[data-action="share"]'), 'guided action delegates to the real control');
+guided.click('guide-next',{guideAction:'learn'});
+guide(guided,'learn','rapid second Next is safely ignored');
+guided.advance(400);
+guided.click('guide-next',{guideAction:'share'});
+guide(guided,'learn','stale guided action cannot invoke a new step');
+guided.click('guide-next',{guideAction:'learn'});
+guide(guided,'analyze','Next opens Followshot');
+guided.advance(400);guided.click('guide-next',{guideAction:'use-preset'});
+guide(guided,'plan','Next opens the editable shot plan');
+guided.advance(400);guided.click('guide-next',{guideAction:'start-capture'});
+guide(guided,'record','Next prepares the first shot');
+check(Object.keys(guided.state().takes).length===0, 'preparing a shot never records one implicitly');
+includes(guided, 'Start simulated recording', 'record shortcut clearly names simulated recording rather than generic Next');
+guided.click('guide-next',{guideAction:'record'});
+check(!guided.html().includes('data-guide-step="recording"'), 'rapid Next after preparation does not accidentally start recording');
+guided.advance(400);guided.click('guide-next',{guideAction:'record'});
+guide(guided,'recording','explicit guided recording');
+check(!guided.html().includes('data-action="guide-next"'), 'recording removes the extra advancing control');
+const guidedRecordingTimers=guided.timers.size;
+guided.advance(400);guided.click('guide-next',{guideAction:'record'});
+check(guided.timers.size===guidedRecordingTimers, 'extra guided clicks during recording cannot create duplicate timers');
+guided.tick(30);guide(guided,'take','guided recording finishes at review');
+guided.advance(400);guided.click('guide-next',{guideAction:'use-take'});
+guide(guided,'record','guided Take selection advances one shot only');
+check(guided.state().takes[1].length===1&&guided.state().takes[1][0].selected, 'guided selection uses the existing Take rather than creating one');
+for(const ticks of [30,40,30]) {
+  guided.advance(400);guided.click('guide-next',{guideAction:'record'});guided.tick(ticks);
+  guided.advance(400);guided.click('guide-next',{guideAction:'use-take'});
+}
+guide(guided,'preview','guided sequence reaches preview');
+guided.advance(400);guided.click('guide-next',{guideAction:'confirm-publish'});
+guide(guided,'confirm','Next opens the publishing notice, not completion');
+check(guided.html().includes('data-action="guide-locate" data-guide-action="publish"'), 'publish-stage guide offers locate only');
+guided.advance(400);guided.click('guide-next',{guideAction:'publish'});
+check(guided.state().screen==='preview'&&guided.html().includes('data-guide-step="confirm"'), 'forged generic Next cannot confirm publishing');
+guided.click('guide-locate');
+check(guided.interactions.some(item=>item[0]==='scroll'&&item[1]==='[data-action="publish"]'), 'confirmation locator points to the explicit Publish control');
+guided.click('close-overlay');
+const safePreview=stateData(guided);
+guided.elements.reset.onclick();
+guided.advance(400);guided.click('guide-next',{guideAction:'reset-confirmed'});
+check(stateData(guided)===safePreview, 'forged generic Next cannot reset a draft');
+guided.advance(400);guided.click('guide-next',{guideAction:'close-overlay'});
+check(stateData(guided)===safePreview&&!guided.html().includes('data-guide-step="reset"'), 'reset guide safely keeps progress and returns');
+guided.click('guide-skip');const skippedState=stateData(guided);
+guided.advance(400);guided.click('guide-next',{guideAction:'confirm-publish'});
+check(stateData(guided)===skippedState&&!guided.html().includes('data-guide-step="confirm"'), 'disabled guide ignores stale Next events');
+guided.replay();guided.setLanguage('zh');
+includes(guided,'下一步：查看发布说明','next-action button localizes without losing the current step');
+
 console.log(`ALL ${checks} GUIDE VM TESTS PASSED`);
