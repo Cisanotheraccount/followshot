@@ -5,6 +5,11 @@
   let language = 'zh';
   try { language = localStorage.getItem(key) === 'en' ? 'en' : 'zh'; } catch (_) {}
   const copy = {
+    '灵感有了。<br>下一镜，是你的。': 'You found a spark.<br>Now make it yours.',
+    '一段真实的创作，<br>一份可以照着开始的拍摄计划。': 'A real creative moment.<br>A practical plan for your next shot.',
+    '创作者原创影像 · 经授权使用': 'Original creator footage · Used with permission',
+    '把灵感变成拍摄步骤 <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Turn inspiration into a shot plan <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>',
+
     '跟拍学习': 'Followshot',
     '为什么': 'Why',
     '如何工作': 'How it works',
@@ -25,21 +30,21 @@
     '看懂结构 → 调整拍摄单<br>一镜一提示 → 边拍边确认<br>保留自己的素材 → 完成故事': 'See the structure → adapt the plan<br>One prompt per shot → check as you go<br>Keep your own footage → finish a story',
     '设计假设，不是已验证的增长结论。目标是帮助学习拍摄，而不是复制他人内容。': 'A design hypothesis, not a proven growth claim. The goal is to learn how to film, rather than copy someone else’s content.',
     '你来拍。<br>每一镜，<br>有个方向。': 'Your camera.<br>A clear next step.<br>Every shot.',
-    '试着把「一杯手冲的早晨」<br>变成你自己的四镜小故事。': 'Take “A pour-over morning”<br>and make your own four-shot story.',
-    '这是可操作的高保真模拟，不是 TikTok。<br>AI 分析使用预设；相机和发布均为模拟。<br>不读取摄像头，不上传素材，不发布到平台。': 'An interactive concept, not TikTok.<br>Analysis is preset; camera and publishing are simulated.<br>No camera access, uploads, or platform posts.',
+    '从「摄影最大的遗憾」出发，<br>练习记录你自己的毕业记忆。': 'Start with “The photographer’s biggest regret”.<br>Practice telling your own graduation story.',
+    '参考是真实原创视频；四镜计划是人工预设。<br>拍摄与发布均为模拟，不调用摄像头，<br>不上传素材、不发布到 TikTok。': 'The reference is real; the four-shot plan is manually preset.<br>Filming and publishing are simulated.<br>No camera access, uploads, or TikTok posts.',
     '↺ 重新开始演示': '↺ Restart the demo',
     'LIVE PROTOTYPE <span>•</span> 点击手机内的按钮开始': 'LIVE PROTOTYPE <span>•</span> Tap inside the phone to begin',
     '交互可操作 / 草稿留在本浏览器': 'Interactive / Drafts stay in this browser',
     '一个故事。<br>四个可执行的镜头。': 'One story.<br>Four shots you can make.',
-    '参考视频保留在旁边，<br>拍什么、怎么拍、拍多久，清清楚楚。': 'Keep the reference close.<br>Know what to film, how to frame it, and how long to hold.',
-    '先交代环境': 'Set the scene',
-    '全景 · 固定机位 · 3 秒<br>让观众知道故事在哪里开始。': 'Wide · Static camera · 3 seconds<br>Show where the story begins.',
-    '让细节说话': 'Let the details speak',
-    '特写 · 缓慢推进 · 3 秒<br>靠近咖啡粉，抓住质感。': 'Close-up · Slow push-in · 3 seconds<br>Get close to the coffee grounds and their texture.',
-    '拍下关键动作': 'Capture the key action',
-    '近景 · 侧上方 · 4 秒<br>跟随水流，留完整动作。': 'Close shot · High side angle · 4 seconds<br>Follow the pour from start to finish.',
-    '给故事一个结尾': 'Give the story an ending',
-    '中景 · 轻微拉远 · 3 秒<br>用成品收束，让作品完整。': 'Medium · Gentle pull-back · 3 seconds<br>Close the story with the finished cup.',
+    '从原片手动选出的四个片段，<br>不是自动切分结果。建议拍法与时长均可修改。': 'Four manually selected moments from the reference,<br>not automatic cuts. Adapt the tips and suggested durations.',
+    '留住人物情绪': 'Capture the feeling',
+    '原片 00:00 · 人物互动<br>建议练习 3 秒，留住自然的情绪。': 'Source 00:00 · Human moment<br>Practice for 3 seconds. Keep the feeling natural.',
+    '进入拍摄现场': 'Show the act of making',
+    '原片 00:06 · 拍摄现场<br>建议练习 3 秒，让动作进入画面。': 'Source 00:06 · Behind the scenes<br>Practice for 3 seconds. Bring the action into frame.',
+    '让环境接住情绪': 'Let the setting speak',
+    '原片 00:18 · 城市环境<br>建议练习 4 秒，给故事一点呼吸。': 'Source 00:18 · City setting<br>Practice for 4 seconds. Give the story room to breathe.',
+    '回到故事里的人': 'Return to the person',
+    '原片 00:33 · 毕业人像<br>建议练习 3 秒，以人物收束故事。': 'Source 00:33 · Graduation portrait<br>Practice for 3 seconds. End with the person.',
     '学的是拍法。<br>作品，仍然是你的。': 'Learn the technique.<br>The story stays yours.',
     '入口不打断灵感': 'Start where inspiration happens',
     '从视频的分享面板进入「跟拍学习」，不另建一个需要寻找的工作台。': 'Open Followshot from a video’s share sheet, right where the idea catches your attention.',
@@ -73,21 +78,22 @@
     '可以复用什么': 'What could be reused',
     'ShotPAI 中 TransNetV2 / Core ML 的镜头切分思路可用于候选边界。切分≠理解拍摄意图；语义提示仍需要独立模型与人工确认。': 'ShotPAI’s TransNetV2 / Core ML approach can suggest shot boundaries. Detecting cuts does not reveal filming intent; semantic prompts still need a separate model and human review.',
     '当前做到哪里': 'What works today',
-    '此页面为独立前端模拟。使用自制 SVG 参考、预设分析及模拟 Take；没有接入 TikTok、AI 推理或真实摄像头。原有 App 未在此修改。': 'This is an independent frontend simulation with original SVG references, preset analysis, and simulated takes. It does not connect to TikTok, AI inference, or a real camera. The existing app is unchanged.',
+    '此页面使用创作者授权的真实视频，镜头窗口和提示由人工选定。Take、拍摄和发布仍为模拟；没有接入 TikTok、AI 推理或真实摄像头。原有 App 未在此修改。': 'The real video is used with its creator’s permission. Reference windows and tips were selected manually. Takes, filming, and publishing are simulated; there is no TikTok connection, AI inference, or camera access. The existing app is unchanged.',
     '怎样判断是否有用': 'How to test its value',
     '下一轮邀请新手完成相同拍摄任务，观察首次开拍时间、独立完成率、提示理解和成片结构。先验证行为，再讨论增长。': 'Ask beginners to complete the same filming task. Observe time to first shot, independent completion, prompt comprehension, and story structure. Validate behavior before discussing growth.',
     '下一个好故事，<br>从你的第一镜开始。': 'Your next good story<br>starts with one shot.',
     '开始我的第一镜 <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Make my first shot <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>',
-    '跟拍学习 · 非官方概念演示<br>与 TikTok / ByteDance 无隶属或背书关系。所有演示影像为自制插画。': 'Followshot · Unofficial concept demo<br>Not affiliated with or endorsed by TikTok / ByteDance. All demo imagery is original illustration.',
+    '跟拍学习 · 非官方概念演示<br>与 TikTok / ByteDance 无隶属或背书关系。参考视频由创作者授权使用；拍摄与发布为模拟。': 'Followshot · Unofficial concept demo<br>Not affiliated with or endorsed by TikTok / ByteDance. The creator authorized the reference footage; filming and publishing are simulated.',
     '视觉研究：TikTok About <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Visual reference: TikTok About <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>'
   };
   const attributes = {
+    '创作者原创视频画面': 'A frame from the creator’s original video',
     '原创咖啡场景插画': 'Original coffee scene illustration',
     '注水动作插画': 'Pouring action illustration',
-    '建立场景镜头': 'Establishing shot',
-    '特写镜头': 'Detail shot',
-    '动作镜头': 'Action shot',
-    '成果镜头': 'Final result shot'
+    '毕业人物互动镜头': 'Graduation interaction',
+    '现场拍摄镜头': 'Behind-the-scenes camera shot',
+    '城市环境镜头': 'City skyline',
+    '毕业街道人像镜头': 'Graduation street portrait'
   };
   // Capture the original static elements before the simulator is rendered.
   const elements = [...document.querySelectorAll('body *')]
@@ -119,7 +125,7 @@
     try { localStorage.setItem(key, language); } catch (_) {}
     apply();
     window.dispatchEvent(new Event('followshot-language-change'));
-    if (keepDeviceInView) window.scrollTo({top:scrollY + device.getBoundingClientRect().top - before.top, behavior:'instant'});
+    if (keepDeviceInView) window.scrollTo({top:scrollY + device.getBoundingClientRect().top - before.top, behavior:'auto'});
   }));
   apply();
 })();
