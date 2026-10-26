@@ -552,7 +552,7 @@ html[lang="en"] .takepreview:after{content:'Source footage · Simulated take'}
 .step-guide .guide-next{flex:1;background:#101010;color:#fff;padding:11px 12px;font-weight:700;text-align:left}
 .step-guide [data-action="guide-skip"]{flex-shrink:0;padding:8px 0;color:#315f5b;background:transparent;text-decoration:underline}
 .guide-target{outline:none!important;outline-offset:0;box-shadow:inset 0 0 0 3px #25f4ee!important;border-radius:6px;isolation:isolate}
-.guide-target:after{content:attr(data-guide-label);display:block;position:static;background:#25f4ee;color:#052525;font-size:var(--text-body);font-weight:700;text-shadow:none;border-radius:3px;padding:3px 5px;margin:7px 3px 2px;line-height:1.3;letter-spacing:0}
+.guide-target:after{content:attr(data-guide-label);display:inline-block;white-space:nowrap;position:static;background:#25f4ee;color:#052525;font-size:var(--text-body);font-weight:700;text-shadow:none;border-radius:3px;padding:2px 6px;margin:0 0 0 8px;line-height:1.3;letter-spacing:0}
 .record.guide-target{border-color:#25f4ee;border-radius:50%;box-shadow:inset 0 0 0 4px #111,0 0 0 3px #25f4ee!important}
 .record.guide-target:after{display:none}
 .guide-active .feed-actions button:not([data-action="share"]),.guide-active .feednav,.guide-active .feedtop{display:none}
@@ -569,3 +569,12 @@ html[lang="en"] .takepreview:after{content:'Source footage · Simulated take'}
 .guide-on .share-row{display:none}
 .sheet .step-guide{position:sticky;top:0;z-index:6}
 .sheet .guide-target{scroll-margin-top:190px;scroll-margin-bottom:24px}
+
+/* Keep browser scroll anchoring from shifting the simulator between states. */
+.device,#app{overflow-anchor:none}
+.learn-entry.guide-target{flex-wrap:wrap}
+.learn-entry.guide-target:after{flex-basis:100%;margin:4px 0 0;text-align:center}
+.feed-actions .guide-target:after{margin:7px 0 0;white-space:normal}
+
+.device{scroll-margin-top:132px}
+@media(max-width:760px){.device{scroll-margin-top:104px}}
