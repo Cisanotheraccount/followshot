@@ -9,11 +9,11 @@
     '为什么': 'Why',
     '如何工作': 'How it works',
     '设计思考': 'Design notes',
-    '体验原型 ↗': 'Try it ↗',
+    '体验原型 <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Try it <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>',
     '<span></span> TIKTOK 功能探索 · 非官方概念演示': '<span></span> TIKTOK FEATURE EXPLORATION · UNOFFICIAL CONCEPT',
     '不止看懂。<br>开始<span class="underline">拍懂。</span>': 'See the story.<br><span class="underline">Make it yours.</span>',
     '把「我也想拍」变成下一步。<br>从一条灵感视频，拆出你能完成的拍摄步骤。': 'Turn “I want to try that” into a next step.<br>Break an inspiring video into shots you can make.',
-    '亲手拍一个故事 <span>↗</span>': 'Make your own story <span>↗</span>',
+    '亲手拍一个故事 <span><svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg></span>': 'Make your own story <span><svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg></span>',
     '无需登录 · 2–3 分钟体验 · 全程模拟': 'No sign-in · 2–3 minutes · Fully simulated',
     '喜欢这个镜头？<b>从这里开始拍。</b>': 'Love that shot?<b>Start making it here.</b>',
     '灵感不是终点。': 'Inspiration is just the start.',
@@ -77,9 +77,9 @@
     '怎样判断是否有用': 'How to test its value',
     '下一轮邀请新手完成相同拍摄任务，观察首次开拍时间、独立完成率、提示理解和成片结构。先验证行为，再讨论增长。': 'Ask beginners to complete the same filming task. Observe time to first shot, independent completion, prompt comprehension, and story structure. Validate behavior before discussing growth.',
     '下一个好故事，<br>从你的第一镜开始。': 'Your next good story<br>starts with one shot.',
-    '开始我的第一镜 ↗': 'Make my first shot ↗',
+    '开始我的第一镜 <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Make my first shot <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>',
     '跟拍学习 · 非官方概念演示<br>与 TikTok / ByteDance 无隶属或背书关系。所有演示影像为自制插画。': 'Followshot · Unofficial concept demo<br>Not affiliated with or endorsed by TikTok / ByteDance. All demo imagery is original illustration.',
-    '视觉研究：TikTok About ↗': 'Visual reference: TikTok About ↗'
+    '视觉研究：TikTok About <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>': 'Visual reference: TikTok About <svg class="ui-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19 19 5M5 5h14v14" fill="none" stroke="currentColor" stroke-width="2"></path></svg>'
   };
   const attributes = {
     '原创咖啡场景插画': 'Original coffee scene illustration',

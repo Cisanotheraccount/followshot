@@ -146,7 +146,7 @@ to{width:100%}
 .sheet h3{text-align:center;margin:0 0 23px;font-size:var(--text-subtitle)}
 .sheet p{font-size:var(--text-body);line-height:1.6;color:#777}
 .share-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:25px}
-.share-item{text-align:center;font-size:var(--text-body);color:#777}
+.share-item{text-align:center;font-size:var(--text-body);color:#555}
 .share-item i{display:grid;place-items:center;margin:0 auto 8px;background:#ddd;border-radius:50%;width:44px;height:44px;font-size:var(--text-subtitle);font-style:normal}
 .learn-entry{background:#111;color:#fff;padding:17px;border:0;width:100%;display:flex;align-items:center;gap:15px;text-align:left;border-radius:8px}
 .learn-entry>span{font-size:var(--text-subtitle);color:#25f4ee}
@@ -216,10 +216,15 @@ to{width:100%}
 .app-btn-link{border:0;background:transparent;color:#25d9d0;font-size:var(--text-body);padding:8px 0}
 .blank-space{height:12px}
 
+.ui-arrow{width:1em;height:1em;display:inline-block;vertical-align:-.12em;flex-shrink:0;fill:none;stroke:currentColor}
+.mark svg{width:32px;height:32px;fill:none;stroke:currentColor}
+
+@media(max-width:1500px){.demo-section{grid-template-columns:minmax(0,1fr) 420px;gap:50px}.context{display:none}}
+
 @media(min-width:1500px){main{max-width:1800px;margin:auto}
 .demo-section{padding-left:9%;padding-right:9%}
 }
-@media(max-width:1100px){.demo-section{grid-template-columns:minmax(0,1fr) 420px;gap:40px}
+@media(max-width:1100px){.demo-section{grid-template-columns:minmax(0,1fr) 420px;gap:50px}
 .context{display:none}
 .hero{padding-left:6%;padding-right:6%;min-height:660px}
 .tall{height:410px}
@@ -384,7 +389,7 @@ footer .brand{flex-shrink:0}
 .sheet .step-guide{margin:-6px -2px 18px;border-radius:8px;border:1px solid #25d9d0}
 
 @media(max-width:1100px){header nav a:not(.navcta){display:none}
-.demo-section{gap:35px}
+.demo-section{gap:50px}
 .section-title{align-items:start}
 .storyboard{gap:18px}
 }
