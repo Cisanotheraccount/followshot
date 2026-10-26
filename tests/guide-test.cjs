@@ -122,6 +122,22 @@ function guide(browser, expected, message = expected) {
   check((browser.html().match(/class="step-guide"/g) || []).length === 1, `one guide only: ${message}`);
 }
 function noGuide(browser, message) { check(!browser.html().includes('class="step-guide"'), message); }
+function compactHint(browser, primary, name) {
+  const hint = browser.html().match(/<section class="step-guide"[^>]*>[\s\S]*?<\/section>/)?.[0] || '';
+  check(Boolean(hint), `${name} has its compact contextual hint`);
+  check((hint.match(/<button\b/g)||[]).length===1 && hint.includes('data-action="guide-skip"'), `${name} hint only offers Skip, not a duplicate action`);
+  check(!/data-action="guide-(?:next|locate)"|class="guide-next"|data-guide-label=/.test(browser.html()), `${name} has no extra Next, locator, or target badge markup`);
+  const actions=[...browser.html().matchAll(/<button\b[^>]*data-action="([^"]+)"/g)].map(match=>match[1]);
+  check(actions.filter(action=>action===primary).length===1, `${name} has exactly one real ${primary} control`);
+}
+function confirmationOnly(browser, confirmAction, name) {
+  const modal=browser.html().slice(browser.html().lastIndexOf('<div class="overlay">'));
+  check(modal.startsWith('<div class="overlay">'), `${name} is an actual modal`);
+  noGuide(browser, `${name} has no competing guide panel`);
+  const actions=[...modal.matchAll(/<button\b[^>]*data-action="([^"]+)"/g)].map(match=>match[1]);
+  check(actions.length===2 && actions[0]==='close-overlay' && actions[1]===confirmAction, `${name} has only Cancel and explicit Confirm`);
+  check(!/guide-next|guide-locate|guide-skip|data-guide-label|step-guide-message|Next step|下一步/.test(modal), `${name} has no helper buttons, badges, or duplicate Next text`);
+}
 function stateData(browser) { return JSON.stringify(browser.state()); }
 function start(browser) { browser.click('share'); browser.click('learn'); browser.click('use-preset'); browser.click('start-capture'); }
 function record(browser, ticks = 80) { browser.click('record'); browser.tick(ticks); }
@@ -153,7 +169,7 @@ browser.click('share');
 check((browser.html().match(/class="overlay"/g) || []).length === 1, 'repeated Share does not duplicate modal');
 browser.setLanguage('en');
 guide(browser, 'learn', 'language change in share modal');
-includes(browser, 'Choose Followshot to turn the reference', 'modal guide is translated');
+includes(browser, 'Start Followshot here.', 'compact share hint is translated');
 browser.click('close-overlay');
 guide(browser, 'share', 'cancel share');
 browser.click('share');
@@ -166,12 +182,12 @@ check(browser.timers.size === analysisTimerCount, 'double Learn does not restart
 check(browser.elements['analysis-progress'].style.width === '30%', 'analysis is still at current progress');
 browser.setLanguage('zh');
 guide(browser, 'analyze', 'Chinese during analysis');
-includes(browser, '正在拆解参考', 'analysis guide translates to Chinese');
+includes(browser, '也可以直接使用四镜预设。', 'compact analysis hint translates to Chinese');
 includes(browser, 'width:30%', 'language keeps analysis progress');
 browser.click('cancel-analysis');
-guide(browser, 'retry');
+noGuide(browser, 'cancel-analysis modal does not duplicate its existing Retry and preset controls');
 browser.setLanguage('en');
-includes(browser, 'Analysis was cancelled. Retry', 'cancel guide translates');
+includes(browser, 'Analysis cancelled', 'cancel modal still translates without a helper panel');
 browser.escape();
 guide(browser, 'analyze', 'Escape after cancelled analysis');
 browser.tick(10);
@@ -197,7 +213,7 @@ guide(browser, 'record', 'second shot');
 const afterUse = stateData(browser);
 browser.click('use-take');
 check(stateData(browser) === afterUse, 'repeated Use cannot select or skip another shot');
-includes(browser, '已完成 1/4 镜', 'remaining-shot guide uses actual completion count');
+includes(browser, '1/4 完成', 'actual camera progress still shows the completion count');
 browser.click('draft');
 guide(browser, 'resume');
 const draftBeforeReplay = stateData(browser);
@@ -228,8 +244,7 @@ reloaded.replay();
 guide(reloaded, 'preview', 'replay starts at preview, not feed');
 check(reloaded.state().title === 'My own title', 'replay preserves creator title');
 reloaded.click('confirm-publish');
-guide(reloaded, 'confirm');
-check(reloaded.html().indexOf('class="sheet modal-inline"') < reloaded.html().indexOf('class="step-guide"'), 'confirmation guide remains inside modal');
+confirmationOnly(reloaded, 'publish', 'publishing confirmation');
 reloaded.click('close-overlay');
 guide(reloaded, 'preview', 'cancel publication');
 reloaded.click('draft');
@@ -248,7 +263,7 @@ noGuide(finishedReload, 'success guide can be dismissed');
 finishedReload.replay();
 guide(finishedReload, 'done', 'replay after success stays completed');
 finishedReload.elements.reset.onclick();
-guide(finishedReload, 'reset');
+confirmationOnly(finishedReload, 'reset-confirmed', 'reset confirmation');
 finishedReload.click('close-overlay');
 guide(finishedReload, 'done', 'cancel reset restores completed guide');
 check(finishedReload.state().title === 'My own title', 'cancel reset preserves creator input');
@@ -265,7 +280,7 @@ guide(unselectedReload, 'resume', 'draft with an unselected take');
 unselectedReload.click('resume');
 unselectedReload.click('start-capture');
 guide(unselectedReload, 'review-existing', 'existing take is next needed action after restore');
-includes(unselectedReload, 'This shot already has a take.', 'existing-take guide explains reuse rather than forced rerecord');
+includes(unselectedReload, 'A take is ready to review.', 'compact existing-take hint explains reuse rather than forced rerecord');
 unselectedReload.click('guide-locate');
 check(unselectedReload.interactions.at(-1)[1] === '[data-action="review"]', 'existing-take guide targets Review');
 check(unselectedReload.state().takes[1].length === 1, 'restore does not duplicate saved unselected take');
@@ -277,69 +292,74 @@ check(unselectedReload.state().current === 1, 'selecting restored take advances 
 guide(unselectedReload, 'record', 'next missing shot after restored take');
 const preserved = stateData(unselectedReload);
 unselectedReload.click('reference');
-guide(unselectedReload, 'reference', 'reference overlay');
+noGuide(unselectedReload, 'reference overlay has no redundant helper panel');
 unselectedReload.setLanguage('zh');
-guide(unselectedReload, 'reference', 'reference overlay language switch');
+noGuide(unselectedReload, 'reference overlay language switch does not add a helper panel');
 unselectedReload.click('close-overlay');
 guide(unselectedReload, 'record', 'close reference returns to required action');
 check(stateData(unselectedReload) === preserved, 'reference and language do not change draft progress');
-// The guided path invokes the same real controls as manual interaction. It
-// never simulates an extra click on a publish/reset confirmation.
-const guided = createBrowser({language:'en'});
-includes(guided, 'Next: open Share', 'first guided action names the specific next control');
-check(guided.targets['[data-action="share"]'].attributes['data-guide-label'] === 'Next step', 'guide target has a visible textual marker, not outline alone');
-check(guided.targets['[data-action="share"]'].attributes['aria-describedby'] === 'step-guide-message', 'guide target is linked to its contextual explanation');
+// Hints explain the real controls; they do not create a second navigation UI.
+const guided=createBrowser({language:'en'});
+compactHint(guided,'share','reference feed');
+check(guided.targets['[data-action="share"]'].attributes['aria-describedby']==='step-guide-message', 'the real Share control remains linked to its hint');
+check(!Object.prototype.hasOwnProperty.call(guided.targets['[data-action="share"]'].attributes,'data-guide-label'), 'the highlighted real control has no duplicate Next-step badge');
+const untouchedFeed=guided.html();
 guided.click('guide-next',{guideAction:'share'});
-guide(guided,'learn','Next opens the actual Share control');
-check(guided.interactions.some(item=>item[0]==='click'&&item[1]==='[data-action="share"]'), 'guided action delegates to the real control');
+check(guided.html()===untouchedFeed, 'obsolete shortcut clicks cannot open Share');
+guided.click('share');compactHint(guided,'learn','share sheet');
 guided.click('guide-next',{guideAction:'learn'});
-guide(guided,'learn','rapid second Next is safely ignored');
-guided.advance(400);
-guided.click('guide-next',{guideAction:'share'});
-guide(guided,'learn','stale guided action cannot invoke a new step');
-guided.click('guide-next',{guideAction:'learn'});
-guide(guided,'analyze','Next opens Followshot');
-guided.advance(400);guided.click('guide-next',{guideAction:'use-preset'});
-guide(guided,'plan','Next opens the editable shot plan');
-guided.advance(400);guided.click('guide-next',{guideAction:'start-capture'});
-guide(guided,'record','Next prepares the first shot');
+check(guided.html().includes('data-guide-step="learn"'), 'obsolete shortcut clicks cannot leave the share sheet');
+guided.click('learn');compactHint(guided,'use-preset','manual reference preparation');
+guided.click('use-preset');compactHint(guided,'start-capture','editable shot plan');
+guided.click('start-capture');compactHint(guided,'record','first simulated camera');
 check(Object.keys(guided.state().takes).length===0, 'preparing a shot never records one implicitly');
-includes(guided, 'Start simulated recording', 'record shortcut clearly names simulated recording rather than generic Next');
+const beforeRecord=guided.html(),beforeRecordTimers=guided.timers.size;
 guided.click('guide-next',{guideAction:'record'});
-check(!guided.html().includes('data-guide-step="recording"'), 'rapid Next after preparation does not accidentally start recording');
-guided.advance(400);guided.click('guide-next',{guideAction:'record'});
-guide(guided,'recording','explicit guided recording');
-check(!guided.html().includes('data-action="guide-next"'), 'recording removes the extra advancing control');
-const guidedRecordingTimers=guided.timers.size;
-guided.advance(400);guided.click('guide-next',{guideAction:'record'});
-check(guided.timers.size===guidedRecordingTimers, 'extra guided clicks during recording cannot create duplicate timers');
-guided.tick(30);guide(guided,'take','guided recording finishes at review');
-guided.advance(400);guided.click('guide-next',{guideAction:'use-take'});
-guide(guided,'record','guided Take selection advances one shot only');
-check(guided.state().takes[1].length===1&&guided.state().takes[1][0].selected, 'guided selection uses the existing Take rather than creating one');
-for(const ticks of [30,40,30]) {
-  guided.advance(400);guided.click('guide-next',{guideAction:'record'});guided.tick(ticks);
-  guided.advance(400);guided.click('guide-next',{guideAction:'use-take'});
-}
-guide(guided,'preview','guided sequence reaches preview');
-guided.advance(400);guided.click('guide-next',{guideAction:'confirm-publish'});
-guide(guided,'confirm','Next opens the publishing notice, not completion');
-check(guided.html().includes('data-action="guide-locate" data-guide-action="publish"'), 'publish-stage guide offers locate only');
-guided.advance(400);guided.click('guide-next',{guideAction:'publish'});
-check(guided.state().screen==='preview'&&guided.html().includes('data-guide-step="confirm"'), 'forged generic Next cannot confirm publishing');
-guided.click('guide-locate');
-check(guided.interactions.some(item=>item[0]==='scroll'&&item[1]==='[data-action="publish"]'), 'confirmation locator points to the explicit Publish control');
+check(guided.html()===beforeRecord && guided.timers.size===beforeRecordTimers, 'obsolete shortcut cannot start simulated recording');
+guided.click('record');compactHint(guided,'record','recording state');
+check(/data-action="record"[^>]*disabled/.test(guided.html()), 'the sole Record control is disabled during recording');
+const recordingTimerCount=guided.timers.size;
+guided.click('guide-next',{guideAction:'record'});guided.click('record');
+check(guided.timers.size===recordingTimerCount, 'repeated real or obsolete recording clicks cannot create duplicate timers');
+guided.tick(30);compactHint(guided,'use-take','take review');
+guided.click('use-take');compactHint(guided,'record','next simulated shot');
+check(guided.state().takes[1].length===1 && guided.state().takes[1][0].selected, 'the real Use control selects the existing Take once');
+for(const ticks of [30,40,30]){guided.click('record');guided.tick(ticks);guided.click('use-take');}
+compactHint(guided,'confirm-publish','finished-story preview');
+const previewState=stateData(guided);
+guided.click('guide-next',{guideAction:'confirm-publish'});
+check(stateData(guided)===previewState && !guided.html().includes('class="overlay"'), 'obsolete shortcut cannot open publishing confirmation');
+guided.click('confirm-publish');confirmationOnly(guided,'publish','final publish modal');
+guided.click('guide-next',{guideAction:'publish'});
+check(stateData(guided)===previewState, 'obsolete shortcut cannot confirm publishing');
+guided.replay();confirmationOnly(guided,'publish','replayed hint while final modal is open');
+check(stateData(guided)===previewState, 'replaying the hint cannot publish or alter the draft');
+guided.setLanguage('zh');confirmationOnly(guided,'publish','Chinese final publish modal');
+includes(guided,'确认模拟发布？','final confirmation still localizes');
+guided.setLanguage('en');guided.click('close-overlay');compactHint(guided,'confirm-publish','preview after cancelling publication');
+guided.elements.reset.onclick();confirmationOnly(guided,'reset-confirmed','final reset modal');
+guided.click('guide-next',{guideAction:'reset-confirmed'});
+check(stateData(guided)===previewState, 'obsolete shortcut cannot reset the draft');
+guided.replay();confirmationOnly(guided,'reset-confirmed','replayed hint while reset modal is open');
 guided.click('close-overlay');
-const safePreview=stateData(guided);
-guided.elements.reset.onclick();
-guided.advance(400);guided.click('guide-next',{guideAction:'reset-confirmed'});
-check(stateData(guided)===safePreview, 'forged generic Next cannot reset a draft');
-guided.advance(400);guided.click('guide-next',{guideAction:'close-overlay'});
-check(stateData(guided)===safePreview&&!guided.html().includes('data-guide-step="reset"'), 'reset guide safely keeps progress and returns');
+check(stateData(guided)===previewState, 'the real Cancel control preserves all completed takes');
 guided.click('guide-skip');const skippedState=stateData(guided);
-guided.advance(400);guided.click('guide-next',{guideAction:'confirm-publish'});
-check(stateData(guided)===skippedState&&!guided.html().includes('data-guide-step="confirm"'), 'disabled guide ignores stale Next events');
-guided.replay();guided.setLanguage('zh');
-includes(guided,'下一步：查看发布说明','next-action button localizes without losing the current step');
+guided.click('guide-next',{guideAction:'confirm-publish'});
+check(stateData(guided)===skippedState && !guided.html().includes('class="overlay"'), 'skipped guide ignores stale shortcut events');
+guided.replay();guided.setLanguage('zh');compactHint(guided,'confirm-publish','replayed Chinese preview hint');
+includes(guided,'准备好后，查看模拟完成说明。','compact hint localizes without losing the current step');
+
+// Source-level geometry contracts complement, but never replace, real browser QA.
+const css=fs.readFileSync(path.resolve(__dirname,'../site/style.css'),'utf8');
+const geometry=css.slice(css.lastIndexOf('/* Ordinary portrait handset and quiet, target-adjacent hints. */'));
+check(geometry.startsWith('/* Ordinary portrait handset'), 'the portrait handset geometry contract is present');
+const desktop=geometry.match(/\.device\{([^}]*)\}/)?.[1]||'';
+check(/width:390px(?:;|$)/.test(desktop)&&/height:844px!important/.test(desktop), 'desktop handset keeps 390×844 portrait dimensions instead of viewport-height squashing');
+check(/aspect-ratio:390\/844/.test(desktop)&&/min-height:0!important/.test(desktop), 'desktop handset ratio is explicit without a fat-phone minimum-height override');
+check(/\.device-wrap\{position:static!important\}/.test(geometry), 'handset container is not trapped in sticky positioning');
+const mobile=geometry.match(/@media\(max-width:760px\)\{\.device\{([^}]*)\}/)?.[1]||'';
+check(/width:min\(390px,100%\)/.test(mobile)&&/height:auto!important/.test(mobile)&&/aspect-ratio:390\/844/.test(mobile), 'mobile handset scales its height with the same portrait ratio');
+check(/\.guide-target:after\{[^}]*display:none!important;[^}]*content:none!important/.test(geometry), 'duplicate target Next-step badges are suppressed');
+check(/\.capture-idle>\.appfooter\{display:none\}/.test(geometry), 'empty camera review footer stays hidden before a Take exists');
 
 console.log(`ALL ${checks} GUIDE VM TESTS PASSED`);
