@@ -385,7 +385,8 @@ footer .brand{flex-shrink:0}
 .step-guide button{font-size:var(--text-body);font-weight:600;min-height:40px;padding:6px 12px;background:#fff;color:#111;border:0;border-radius:4px;margin:6px 8px 0 0}
 .step-guide .guide-skip,.step-guide [data-action="guide-skip"]{background:transparent;color:#fff;text-decoration:underline}
 .guide-target{outline:3px solid #25f4ee!important;outline-offset:4px;position:relative;z-index:2}
-.guide-replay{font-size:var(--text-body);font-weight:600;padding:10px 0;border:0;background:transparent;text-decoration:underline;color:inherit}
+.guide-replay{display:block;margin-top:18px;font-size:var(--text-body);font-weight:600;padding:10px 0;border:0;background:transparent;text-decoration:underline;color:inherit}
+.demo-intro #reset{display:block;margin-top:8px}
 .sheet .step-guide{margin:-6px -2px 18px;border-radius:8px;border:1px solid #25d9d0}
 
 @media(max-width:1100px){header nav a:not(.navcta){display:none}
