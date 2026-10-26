@@ -25,9 +25,20 @@ The 中文 / EN buttons switch both the explanation site and simulator. Language
 
 ## 真实边界 / Simulation boundaries
 
-参考素材为原创 SVG 咖啡插画。分析结果为预设；相机、Take 和发布均为模拟。本网页不请求摄像头权限、不上传素材、不向 TikTok 发布、不生成视频文件。与 TikTok / ByteDance 无隶属或背书关系。ShotPAI 原生 App 不属于此仓库。
+参考素材为创作者提供并明确授权公开使用的《摄影最大的遗憾》：38.033 秒竖屏影像，包含原片中文字幕与音轨。网页托管完整 1080×1920 版本，并用完整时长的 540×960 版本作轻量预览。四个示例片段由人工选定（00:00、00:06、00:18、00:33），不是实时 AI 识别的镜头切点。镜头卡里的 3/3/4/3 秒是可编辑的练习建议，不是原片分段长度。
 
-Reference imagery consists of original coffee-themed SVG illustrations. Analysis is preset; the camera, takes, and publishing are simulated. This site does not request camera access, upload footage, publish to TikTok, or export a video file. It is not affiliated with or endorsed by TikTok / ByteDance. The native ShotPAI app is not part of this repository.
+The reference is the creator-owned film “The photographer’s biggest regret”, explicitly authorized for this public concept website and source repository. Its complete 38.033-second portrait video, burned-in Chinese subtitles, and audio are preserved. The site hosts a full 1080×1920 copy and a full-duration 540×960 lightweight preview. The four illustrative windows (00:00, 00:06, 00:18, 00:33) were selected manually, not by live AI or automatic cut detection. The editable 3/3/4/3-second shot durations are practice suggestions, not original cut lengths.
+
+拍摄、Take 和发布仍为模拟。回看与成片界面播放的是原片窗口，不是用户新拍摄的素材。本网页不请求摄像头权限、不上传用户素材、不向 TikTok 发布、不生成新视频文件。与 TikTok / ByteDance 无隶属或背书关系。ShotPAI 原生 App 不属于此仓库。
+
+The camera, takes, and publishing remain simulated. Review and story preview reuse source-footage windows; they are not newly recorded user clips. This page does not access a camera, upload user footage, post to TikTok, or export a new video. It is not affiliated with or endorsed by TikTok / ByteDance. The native ShotPAI app is outside this repository.
+
+## 影像与字体 / Media and typography
+
+- `site/media/reference-manifest.json` records public media metadata and manual reference windows, without private source paths.
+- Decorative playback is muted and optional. It pauses off-screen or when the document is hidden, respects reduced-motion settings, and has an explicit pause/play control. The full player exposes standard browser controls and audio.
+- TikTok Sans is self-hosted from [the official open-source family](https://github.com/tiktok/TikTokSans), distributed by [Google Fonts](https://github.com/google/fonts/tree/main/ofl/tiktoksans). Its SIL Open Font License is included in `site/media/fonts/OFL-TikTokSans.txt`. System Chinese sans-serif fallbacks preserve bilingual legibility. No TikTok logo is used.
+- CSS and script URLs carry a release version so an older cached stylesheet cannot hide the latest guide.
 
 ## 部署 / Deployment
 
@@ -43,6 +54,6 @@ GitHub Pages deploys only `site/` from the independent repository's `main` branc
 
 Both languages use three text levels: body 18px (mobile 16px), subtitle 24px (22px), and heading 64px (40px). Body weight is 500, controls 600, headings 700.
 
-A contextual guide highlights the actual next action, including draft continuation, modal confirmation and cancellation. Skip it at any time; Start / replay step guide returns to the current step without clearing your work. Guide preference uses its own local key `followshot-guide-v1`.
+A contextual guide exposes one explicitly labeled next action and marks the actual in-context control using an inset border/shadow and visible text, rather than relying on an outside outline. The guide respects draft continuation, modal confirmation, cancellation, and repeated clicks. Simulated recording is named explicitly; publishing and reset still require their own explicit confirmation. Skip at any time; Start / replay step guide returns to the current step without clearing work. Guide preference uses its own local key `followshot-guide-v1`.
 
-`npm test` includes the original 125 state/i18n assertions, asset checks, and the contextual-guide regression suite. VM tests use deterministic timers and a stubbed DOM; visual browser checks are separate.
+`npm test` includes state/i18n and guide regressions, legacy-authored-text preservation, real-media playback controls, and relative asset/MP4/JPEG/manifest checks. VM tests use deterministic timers and a stubbed DOM; actual rendering, media decoding, and browser-engine checks are separate. `npm run dev -- --host 0.0.0.0 --port 4173 --strictPort` provides a dependency-free local preview with byte-range video support.
