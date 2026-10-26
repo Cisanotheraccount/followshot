@@ -142,7 +142,8 @@ function simulatorMediaChecks() {
   check(Math.abs(sim.video('feed').currentTime-12.3)<.001, 'Language switching preserves real reference playback position');
   check(sim.html.includes('创作者原创影像 · 授权演示'), 'Feed truthfully labels authorized real footage');
   sim.click('next-reference');
-  check(sim.video('feed').currentTime===6 && sim.video('feed').paused, 'Next reference selects the second manual timestamp and pauses');
+  check(Math.abs(sim.video('feed').currentTime-12.3)<.001 && !sim.video('feed').paused, 'Retired reference stepping cannot interrupt the ordinary feed video');
+  sim.click('play-feed');check(sim.video('feed').paused, 'Feed exposes ordinary video pause without reference tools');
   sim.click('play-feed');sim.visible(false);
   check(sim.video('feed').paused, 'Off-screen simulator video is paused');
   sim.visible(true);check(!sim.video('feed').paused, 'Visible simulator resumes requested reference playback');

@@ -132,7 +132,8 @@ function normalFeed(browser, name) {
   noGuide(browser, `${name} has no feature hint before entry`);
   check(!/data-action="(?:resume|guide-skip|guide-next|guide-locate)"|step-guide-message|data-guide-label/.test(browser.html()), `${name} has no direct draft or guide controls`);
   check(!browser.elements.app.classList.contains('guide-active') && !browser.elements.app.classList.contains('guide-on'), `${name} has no guided class that hides ordinary feed controls`);
-  check(['like','save-reference','share','play-feed','next-reference'].every(action => browser.html().includes(`data-action="${action}"`)), `${name} preserves ordinary reference interactions`);
+  check(['like','save-reference','share','play-feed'].every(action => browser.html().includes(`data-action="${action}"`)), `${name} preserves ordinary video interactions`);
+  check(!browser.html().includes('data-action="next-reference"'), `${name} does not expose reference shot stepping on the feed`);
   check(browser.html().includes('class="feednav"') && browser.html().includes('class="feedtop"'), `${name} preserves the normal feed navigation`);
 }
 function shareMenu(browser, name) {
