@@ -4,7 +4,9 @@
   "private": true,
   "description": "Bilingual interactive Followshot concept",
   "scripts": {
-    "test": "node --check site/site-language.js && node --check site/app.js && node tests/state-test-original.cjs && node tests/i18n-state-test.cjs && node tests/assets-test.cjs"
+    "test": "node --check site/site-language.js && node --check site/app.js && node tests/state-test-original.cjs && node tests/i18n-state-test.cjs && node tests/assets-test.cjs && node tests/guide-test.cjs"
   },
-  "engines": { "node": ">=18" }
+  "engines": {
+    "node": ">=18"
+  }
 }

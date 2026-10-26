@@ -38,3 +38,11 @@ GitHub Pages 使用独立项目仓库，自动部署 `main` 分支中的 `site/`
 GitHub Pages deploys only `site/` from the independent repository's `main` branch. Relative asset paths work under `/followshot/`. This repository has no CNAME and does not change the main site or DNS. A project site inherits the same account's user-site custom domain. Public website access and source repository visibility are separate settings, subject to GitHub plan availability.
 
 [GitHub: custom domains across repositories](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/about-custom-domains-and-github-pages#using-a-custom-domain-across-multiple-repositories)
+
+## Readability and step guide / 字级与操作引导
+
+Both languages use three text levels: body 18px (mobile 16px), subtitle 24px (22px), and heading 64px (40px). Body weight is 500, controls 600, headings 700.
+
+A contextual guide highlights the actual next action, including draft continuation, modal confirmation and cancellation. Skip it at any time; Start / replay step guide returns to the current step without clearing your work. Guide preference uses its own local key `followshot-guide-v1`.
+
+`npm test` includes the original 125 state/i18n assertions, asset checks, and the contextual-guide regression suite. VM tests use deterministic timers and a stubbed DOM; visual browser checks are separate.
