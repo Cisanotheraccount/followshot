@@ -1,0 +1,41 @@
+{
+  "title": "摄影最大的遗憾",
+  "duration_seconds": 38.033333,
+  "width": 1080,
+  "height": 1920,
+  "fps": 30,
+  "reference": "reference.mp4",
+  "preview": "reference-preview.mp4",
+  "poster": {
+    "file": "poster.jpg",
+    "seconds": 21
+  },
+  "shots": [
+    {
+      "id": 1,
+      "file": "shot1.jpg",
+      "seconds": 0,
+      "preview_end_seconds": 2.5
+    },
+    {
+      "id": 2,
+      "file": "shot2.jpg",
+      "seconds": 6,
+      "preview_end_seconds": 8
+    },
+    {
+      "id": 3,
+      "file": "shot3.jpg",
+      "seconds": 18,
+      "preview_end_seconds": 20.5
+    },
+    {
+      "id": 4,
+      "file": "shot4.jpg",
+      "seconds": 33,
+      "preview_end_seconds": 35.5
+    }
+  ],
+  "analysis": "Manually selected illustrative windows, not model-generated analysis or exact cut boundaries. Capture and publishing remain simulations.",
+  "permission": "Original creator footage supplied and authorized by its owner for this public concept website and repository."
+}
