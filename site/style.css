@@ -578,3 +578,34 @@ html[lang="en"] .takepreview:after{content:'Source footage · Simulated take'}
 
 .device{scroll-margin-top:132px}
 @media(max-width:760px){.device{scroll-margin-top:104px}}
+
+/* Ordinary portrait handset and quiet, target-adjacent hints. */
+.device-wrap{position:static!important}
+.device{width:390px;max-width:100%;height:844px!important;min-height:0!important;border-width:5px;border-radius:40px;aspect-ratio:390/844;box-shadow:0 16px 40px #00000014,0 0 0 1px #444}
+.device-caption{max-width:390px}
+.step-guide{position:relative!important;inset:auto;display:flex;align-items:center;gap:12px;padding:10px 12px!important;border:0!important;border-radius:8px;background:#242424;color:#ddd;z-index:2;line-height:1.4;box-shadow:none}
+.step-guide p{flex:1;min-width:0;margin:0!important;font-size:var(--text-body);font-weight:500;line-height:1.4!important;color:inherit}
+.step-guide [data-action="guide-skip"]{flex:0 0 auto;max-width:none!important;margin:0!important;padding:4px 0!important;min-height:32px;background:none;color:#aaa;font-size:var(--text-body);font-weight:500;text-decoration:none;border-radius:0}
+.step-guide [data-action="guide-skip"]:hover{color:#fff}
+.appfooter{flex-wrap:wrap}
+.appfooter>.step-guide{flex-basis:100%;padding:0 0 8px!important;background:transparent;border-radius:0;color:#aaa}
+.appfooter>.appbtn{flex:1;min-width:0}
+.guide-target{outline:none!important;box-shadow:none!important;isolation:auto;border-radius:inherit}
+.guide-target:after{display:none!important;content:none!important}
+.record.guide-target{border-color:#fff;box-shadow:0 0 0 3px #fff3!important;border-radius:50%}
+.learn-entry.guide-target{flex-wrap:nowrap}
+.feed>.step-guide{position:absolute!important;right:98px;bottom:145px;max-width:230px;background:#fff;color:#161616;box-shadow:0 4px 20px #0002}
+.feed>.step-guide [data-action="guide-skip"]{color:#777}
+.guide-active .feed-actions{width:66px;bottom:125px}
+.guide-active .feed-actions button{padding:8px 0}
+.guide-active .feed-info{right:90px;bottom:60px}
+.guide-active .feed-info .label{background:#0008}
+.capture-meta>.step-guide{margin:14px 0 8px;padding:8px 10px!important;background:#242424}
+.sheet .step-guide{position:static!important;margin:0 0 12px;padding:0!important;background:transparent;color:#666;border-radius:0}
+.sheet .step-guide [data-action="guide-skip"]{color:#777}
+.guide-replay{padding:0;background:transparent;color:#666;text-decoration:underline;font-weight:500;min-height:44px}
+.camera,html[lang="en"] .camera{height:310px;min-height:200px}
+.takepreview{height:310px}
+@media(max-width:760px){.device{width:min(390px,100%);height:auto!important;min-height:0!important;aspect-ratio:390/844}.status{height:44px;padding-top:8px}.camera,html[lang="en"] .camera{height:270px;min-height:160px}.takepreview{height:280px}.step-guide{gap:8px}.feed>.step-guide{right:80px;max-width:205px;bottom:135px}.guide-active .feed-actions{bottom:115px;width:60px}.guide-active .feed-info{right:78px}.capture-meta,html[lang="en"] .capture-meta{padding:12px}.record-row{margin-top:8px}}
+
+.capture-idle>.appfooter{display:none}
