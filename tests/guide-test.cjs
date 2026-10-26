@@ -21,7 +21,13 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
 
   const element = () => ({
     innerHTML: '', textContent: '', style: {}, children: [], dataset: {}, attributes: {},
-    classList: {add() {}, remove() {}, toggle() {}},
+    classList: {
+      values: new Set(),
+      add(...names) { names.forEach(name => this.values.add(name)); },
+      remove(...names) { names.forEach(name => this.values.delete(name)); },
+      toggle(name, force) { const enabled = force === undefined ? !this.values.has(name) : force; enabled ? this.values.add(name) : this.values.delete(name); return enabled; },
+      contains(name) { return this.values.has(name); }
+    },
     setAttribute(name, value) { this.attributes[name] = String(value); }, focus() { interactions.push(['focus', this.selector || '']); }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
     querySelector(selector) {
       const result = element(); result.selector = selector;
@@ -122,6 +128,20 @@ function guide(browser, expected, message = expected) {
   check((browser.html().match(/class="step-guide"/g) || []).length === 1, `one guide only: ${message}`);
 }
 function noGuide(browser, message) { check(!browser.html().includes('class="step-guide"'), message); }
+function normalFeed(browser, name) {
+  noGuide(browser, `${name} has no feature hint before entry`);
+  check(!/data-action="(?:resume|guide-skip|guide-next|guide-locate)"|step-guide-message|data-guide-label/.test(browser.html()), `${name} has no direct draft or guide controls`);
+  check(!browser.elements.app.classList.contains('guide-active') && !browser.elements.app.classList.contains('guide-on'), `${name} has no guided class that hides ordinary feed controls`);
+  check(['like','save-reference','share','play-feed','next-reference'].every(action => browser.html().includes(`data-action="${action}"`)), `${name} preserves ordinary reference interactions`);
+  check(browser.html().includes('class="feednav"') && browser.html().includes('class="feedtop"'), `${name} preserves the normal feed navigation`);
+}
+function shareMenu(browser, name) {
+  noGuide(browser, `${name} has no hint before the feature is chosen`);
+  check(!browser.elements.app.classList.contains('guide-active') && !browser.elements.app.classList.contains('guide-on'), `${name} does not hide the ordinary sharing options`);
+  check(browser.html().includes('class="share-row"') && browser.html().indexOf('class="share-row"') < browser.html().indexOf('data-action="learn"'), `${name} offers Followshot after ordinary sharing options`);
+  check((browser.html().match(/data-action="learn"/g)||[]).length === 1, `${name} has one optional Followshot entry`);
+  check(!/data-action="(?:resume|guide-skip|guide-next|guide-locate)"|data-guide-label/.test(browser.html()), `${name} has no competing guide or direct-resume control`);
+}
 function compactHint(browser, primary, name) {
   const hint = browser.html().match(/<section class="step-guide"[^>]*>[\s\S]*?<\/section>/)?.[0] || '';
   check(Boolean(hint), `${name} has its compact contextual hint`);
@@ -143,38 +163,61 @@ function start(browser) { browser.click('share'); browser.click('learn'); browse
 function record(browser, ticks = 80) { browser.click('record'); browser.tick(ticks); }
 
 const browser = createBrowser();
-guide(browser, 'share');
-check(browser.interactions.filter(item => item[0] === 'scroll').length === 0, 'initial guide does not hijack scrolling');
-browser.click('guide-locate');
-check(browser.interactions.at(-1)[1] === '[data-action="share"]', 'locate scrolls to actual Share target');
+normalFeed(browser, 'initial reference feed');
+check(browser.interactions.filter(item => item[0] === 'scroll').length === 0, 'initial feed does not hijack scrolling');
+check(!browser.targets['[data-action="share"]'], 'initial Share is not marked as a feature-guide target');
 const initialState = stateData(browser);
-browser.click('guide-skip');
-noGuide(browser, 'skip removes guide');
-check(browser.storage[GUIDE_KEY] === 'off', 'skip preference persists separately');
-check(stateData(browser) === initialState, 'skip does not change simulator state');
-const skippedReload = createBrowser({storage: browser.storage});
-noGuide(skippedReload, 'skip survives reload');
-skippedReload.replay();
-guide(skippedReload, 'share', 'replay current state');
-check(skippedReload.storage[GUIDE_KEY] === 'on', 'replay preference is persisted');
-check(skippedReload.interactions.at(-1)[1] === '[data-action="share"]', 'replay brings first required action into view');
-
 browser.replay();
+normalFeed(browser, 'home after replay');
+check(stateData(browser) === initialState, 'replay on home does not change simulator state');
+check(!browser.html().includes('class="overlay"'), 'replay on home does not opt into Followshot or open Share');
 browser.click('share');
-guide(browser, 'learn');
-check(browser.html().indexOf('class="overlay"') < browser.html().indexOf('class="step-guide"'), 'modal guide resides inside overlay');
-check(browser.html().indexOf('class="sheet"') < browser.html().indexOf('class="step-guide"'), 'modal guide resides inside sheet');
+shareMenu(browser, 'initial Share sheet');
 check(browser.interactions.filter(item => item[0] === 'focus').at(-1)[1] === 'button:not([data-action^="guide-"])', 'modal initially focuses a real action rather than guide');
 browser.click('share');
 check((browser.html().match(/class="overlay"/g) || []).length === 1, 'repeated Share does not duplicate modal');
 browser.setLanguage('en');
-guide(browser, 'learn', 'language change in share modal');
-includes(browser, 'Start Followshot here.', 'compact share hint is translated');
+shareMenu(browser, 'English Share sheet');
+includes(browser, 'Followshot', 'optional feature entry is translated');
+browser.replay();
+shareMenu(browser, 'Share sheet after replay');
+check(browser.state().screen !== 'analyze', 'replay in Share does not enter the feature');
 browser.click('close-overlay');
-guide(browser, 'share', 'cancel share');
+normalFeed(browser, 'cancelled Share sheet');
 browser.click('share');
 browser.click('learn');
 guide(browser, 'analyze');
+check(browser.storage[GUIDE_KEY] === 'on', 'choosing Followshot explicitly persists enabled guidance');
+const analysisBeforeSkip = stateData(browser);
+browser.click('guide-skip');
+noGuide(browser, 'skip removes the opted-in feature hint');
+check(browser.storage[GUIDE_KEY] === 'off', 'skip preference persists separately');
+check(stateData(browser) === analysisBeforeSkip, 'skip does not change simulator state');
+const skippedReload = createBrowser({storage: {...browser.storage}});
+normalFeed(skippedReload, 'reload with tips off');
+check(skippedReload.storage[GUIDE_KEY] === 'off', 'skip preference survives reload without entering the feature');
+skippedReload.replay();
+normalFeed(skippedReload, 'replayed home after tips-off reload');
+browser.replay();
+guide(browser, 'analyze', 'replay resumes the current opted-in state');
+check(browser.storage[GUIDE_KEY] === 'on', 'replay inside the feature persists enabled tips');
+check(browser.interactions.at(-1)[1] === '[data-action="use-preset"]', 'feature replay locates the actual current action');
+
+// An old hidden-tip preference must not silently defeat a newly chosen feature session.
+for (const language of ['zh', 'en']) {
+  const optedOff = createBrowser({storage: {[GUIDE_KEY]:'off'}, language});
+  normalFeed(optedOff, `${language} home with an old off preference`);
+  const notEntered = stateData(optedOff);
+  optedOff.click('learn');
+  check(stateData(optedOff) === notEntered && optedOff.storage[GUIDE_KEY] === 'off' && optedOff.timers.size === 0, `${language} a stale Learn event outside Share cannot enter or enable guidance`);
+  optedOff.click('share');
+  shareMenu(optedOff, `${language} Share with an old off preference`);
+  check(optedOff.storage[GUIDE_KEY] === 'off', `${language} opening Share alone does not opt into guidance`);
+  optedOff.click('learn');
+  guide(optedOff, 'analyze', `${language} explicit entry from old off preference`);
+  check(optedOff.storage[GUIDE_KEY] === 'on', `${language} explicit entry overrides and saves the old off preference`);
+  check(optedOff.state().screen === 'analyze' && optedOff.timers.size === 1, `${language} a new entry starts one preparation timer`);
+}
 browser.tick(3);
 const analysisTimerCount = browser.timers.size;
 browser.click('learn');
@@ -193,7 +236,7 @@ guide(browser, 'analyze', 'Escape after cancelled analysis');
 browser.tick(10);
 guide(browser, 'plan');
 browser.go('feed');
-guide(browser, 'share', 'Back from untouched plan');
+normalFeed(browser, 'Back from untouched plan');
 browser.click('share'); browser.click('learn'); browser.click('use-preset');
 browser.click('start-capture');
 guide(browser, 'record', 'first shot');
@@ -215,14 +258,25 @@ browser.click('use-take');
 check(stateData(browser) === afterUse, 'repeated Use cannot select or skip another shot');
 includes(browser, '1/4 完成', 'actual camera progress still shows the completion count');
 browser.click('draft');
-guide(browser, 'resume');
+normalFeed(browser, 'home after saving a partial draft');
 const draftBeforeReplay = stateData(browser);
 browser.replay();
 check(stateData(browser) === draftBeforeReplay, 'replay leaves draft and takes untouched');
-guide(browser, 'resume', 'replay from partial draft');
-const reloaded = createBrowser({storage: browser.storage, language: 'en'});
-guide(reloaded, 'resume', 'partial draft reload');
+normalFeed(browser, 'home after replay with a partial draft');
+const reloaded = createBrowser({storage: {...browser.storage, [GUIDE_KEY]:'off'}, language: 'en'});
+normalFeed(reloaded, 'partial draft reload');
+const beforeDraftEntry = stateData(reloaded), beforeDraftResume = reloaded.html();
 reloaded.click('resume');
+check(stateData(reloaded) === beforeDraftEntry && reloaded.html() === beforeDraftResume, 'obsolete Resume cannot bypass Share from a saved-draft home');
+reloaded.click('share');
+shareMenu(reloaded, 'Share with a partial saved draft');
+const beforeShareResume = reloaded.html();
+reloaded.click('resume');
+check(stateData(reloaded) === beforeDraftEntry && reloaded.html() === beforeShareResume && reloaded.storage[GUIDE_KEY] === 'off', 'obsolete Resume inside Share cannot bypass explicit Followshot entry');
+check(stateData(reloaded) === beforeDraftEntry, 'opening Share does not alter the saved draft');
+reloaded.click('learn');
+check(reloaded.storage[GUIDE_KEY] === 'on', 'choosing Followshot resumes a draft with tips re-enabled');
+check(reloaded.timers.size === 0, 'resuming a partial draft does not rerun reference preparation');
 guide(reloaded, 'plan', 'resume partial plan');
 reloaded.click('start-capture');
 guide(reloaded, 'record', 'resume next incomplete shot');
@@ -248,9 +302,15 @@ confirmationOnly(reloaded, 'publish', 'publishing confirmation');
 reloaded.click('close-overlay');
 guide(reloaded, 'preview', 'cancel publication');
 reloaded.click('draft');
-guide(reloaded, 'resume', 'complete draft');
-const finishedReload = createBrowser({storage:reloaded.storage, language:'en'});
-finishedReload.click('resume');
+normalFeed(reloaded, 'home with a complete saved draft');
+const finishedReload = createBrowser({storage:{...reloaded.storage, [GUIDE_KEY]:'off'}, language:'en'});
+normalFeed(finishedReload, 'complete draft reload');
+finishedReload.replay();
+normalFeed(finishedReload, 'home replay with a complete draft');
+finishedReload.click('share');
+shareMenu(finishedReload, 'Share with a complete draft');
+finishedReload.click('learn');
+check(finishedReload.storage[GUIDE_KEY] === 'on', 'completed-draft feature entry enables tips');
 guide(finishedReload, 'preview', 'completed draft resumes preview');
 finishedReload.click('confirm-publish'); finishedReload.click('publish');
 guide(finishedReload, 'done');
@@ -268,7 +328,7 @@ finishedReload.click('close-overlay');
 guide(finishedReload, 'done', 'cancel reset restores completed guide');
 check(finishedReload.state().title === 'My own title', 'cancel reset preserves creator input');
 finishedReload.elements.reset.onclick(); finishedReload.click('reset-confirmed');
-guide(finishedReload, 'share', 'confirmed reset restarts the guide with new state');
+normalFeed(finishedReload, 'confirmed reset returns to normal reference feed');
 check(Object.keys(finishedReload.state().takes).length === 0, 'reset clears only demo takes');
 const unselected = createBrowser({language:'en'});
 start(unselected);
@@ -276,8 +336,10 @@ record(unselected, 30);
 guide(unselected, 'take', 'unselected saved take');
 unselected.click('draft');
 const unselectedReload = createBrowser({storage:unselected.storage, language:'en'});
-guide(unselectedReload, 'resume', 'draft with an unselected take');
-unselectedReload.click('resume');
+normalFeed(unselectedReload, 'draft with an unselected take');
+unselectedReload.click('share');
+shareMenu(unselectedReload, 'Share with an unselected take');
+unselectedReload.click('learn');
 unselectedReload.click('start-capture');
 guide(unselectedReload, 'review-existing', 'existing take is next needed action after restore');
 includes(unselectedReload, 'A take is ready to review.', 'compact existing-take hint explains reuse rather than forced rerecord');
@@ -300,16 +362,19 @@ guide(unselectedReload, 'record', 'close reference returns to required action');
 check(stateData(unselectedReload) === preserved, 'reference and language do not change draft progress');
 // Hints explain the real controls; they do not create a second navigation UI.
 const guided=createBrowser({language:'en'});
-compactHint(guided,'share','reference feed');
-check(guided.targets['[data-action="share"]'].attributes['aria-describedby']==='step-guide-message', 'the real Share control remains linked to its hint');
-check(!Object.prototype.hasOwnProperty.call(guided.targets['[data-action="share"]'].attributes,'data-guide-label'), 'the highlighted real control has no duplicate Next-step badge');
+normalFeed(guided,'reference feed');
 const untouchedFeed=guided.html();
+guided.click('resume');
+check(guided.html()===untouchedFeed && guided.timers.size===0, 'obsolete Resume cannot create a feature session on a new home');
 guided.click('guide-next',{guideAction:'share'});
 check(guided.html()===untouchedFeed, 'obsolete shortcut clicks cannot open Share');
-guided.click('share');compactHint(guided,'learn','share sheet');
+guided.click('share');shareMenu(guided,'share sheet');
 guided.click('guide-next',{guideAction:'learn'});
-check(guided.html().includes('data-guide-step="learn"'), 'obsolete shortcut clicks cannot leave the share sheet');
+check(guided.html().includes('class="overlay"') && !guided.html().includes('class="step-guide"'), 'obsolete shortcut clicks cannot leave the ordinary share sheet');
 guided.click('learn');compactHint(guided,'use-preset','manual reference preparation');
+check(guided.targets['[data-action="use-preset"]'].attributes['aria-describedby']==='step-guide-message', 'the opted-in real control remains linked to its hint');
+check(guided.targets['[data-action="use-preset"]'].classList.contains('guide-target'), 'the actual opted-in control receives the subtle target treatment');
+check(!Object.prototype.hasOwnProperty.call(guided.targets['[data-action="use-preset"]'].attributes,'data-guide-label'), 'the highlighted real control has no duplicate Next-step badge');
 guided.click('use-preset');compactHint(guided,'start-capture','editable shot plan');
 guided.click('start-capture');compactHint(guided,'record','first simulated camera');
 check(Object.keys(guided.state().takes).length===0, 'preparing a shot never records one implicitly');
@@ -361,5 +426,9 @@ const mobile=geometry.match(/@media\(max-width:760px\)\{\.device\{([^}]*)\}/)?.[
 check(/width:min\(390px,100%\)/.test(mobile)&&/height:auto!important/.test(mobile)&&/aspect-ratio:390\/844/.test(mobile), 'mobile handset scales its height with the same portrait ratio');
 check(/\.guide-target:after\{[^}]*display:none!important;[^}]*content:none!important/.test(geometry), 'duplicate target Next-step badges are suppressed');
 check(/\.capture-idle>\.appfooter\{display:none\}/.test(geometry), 'empty camera review footer stays hidden before a Take exists');
+
+const entryStyles=css.slice(css.lastIndexOf('/* Learning is opt-in through Share'));
+check(/\.guide-target\{[^}]*box-shadow:inset 0 0 0 2px rgba\(255,255,255,\.85\)!important/.test(entryStyles), 'opted-in targets use an inset white edge rather than relying on a clipped outside outline');
+check(/\.learn-entry\{[^}]*background:#f0f0f0;[^}]*border:1px solid #dedede/.test(entryStyles), 'the optional Share feature entry uses a neutral secondary surface');
 
 console.log(`ALL ${checks} GUIDE VM TESTS PASSED`);
