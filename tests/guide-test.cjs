@@ -279,6 +279,7 @@ reloaded.click('learn');
 check(reloaded.storage[GUIDE_KEY] === 'on', 'choosing Followshot resumes a draft with tips re-enabled');
 check(reloaded.timers.size === 0, 'resuming a partial draft does not rerun reference preparation');
 guide(reloaded, 'plan', 'resume partial plan');
+check(/接着完成下一个镜头。|Continue with your next shot\./.test(reloaded.html()), 'partial restored plan points to the next shot, not the first');
 reloaded.click('start-capture');
 guide(reloaded, 'record', 'resume next incomplete shot');
 check(reloaded.state().current === 1, 'partial resume continues second shot, not first');

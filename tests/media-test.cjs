@@ -32,6 +32,8 @@ check(!/咖啡|插画|self-made SVG|coffee-themed|original illustration/i.test(h
 check(/与 TikTok \/ ByteDance 无隶属或背书关系/.test(html), 'Independent non-affiliation disclosure remains on the page');
 check(/content:'Source footage · Simulated take'/.test(css), 'English take view visibly distinguishes source footage from a real recorded take');
 
+check(/\.reference-thumb\{[^}]*background:#000;[^}]*color:#fff/.test(css), 'Camera reference thumbnail label has explicit white-on-black contrast');
+
 function target() {
   const events = new Map();
   return {
