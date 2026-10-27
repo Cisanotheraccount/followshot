@@ -1,5 +1,6 @@
 // Public presentation checks only. Service implementation and tests stay private.
 const assert=require('node:assert/strict');
+const crypto=require('node:crypto');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
@@ -8,6 +9,17 @@ const html=fs.readFileSync(path.join(root,'site/index.html'),'utf8');
 const css=fs.readFileSync(path.join(root,'site/privacy.css'),'utf8');
 const {normalizeFooterHTML,privacy,ids,resourceTags}=require('./footer-normalize.cjs');
 let count=0;const check=(v,label)=>{assert.ok(v,label);count++;console.log('PASS',label)};
+
+const approvedCN="我们收集匿名浏览汇总；仅在你主动开启后，网站作者可查看本次访问在各区块的停留明细。明细仅显示最近24小时内尚未过期的记录，不跨访问识别人；汇总报表覆盖最近90天，过期记录在后续请求时清理。不使用追踪 Cookie、指纹或跨访问标识。托管服务商可能单独处理安全 Cookie 与网络日志。你可关闭统计，或单独关闭本次访问明细。";
+const approvedEN="We collect anonymous viewing totals. Only if you enable it, the site owner can view this visit’s time in each section. Details show unexpired records from the last 24 hours and do not identify people across visits. Aggregate reports cover the last 90 days; expired records are cleared on subsequent requests. No tracking cookies, fingerprinting, or cross-visit identifiers. The hosting provider may process security cookies and network logs separately. You can turn off analytics or this visit’s details.";
+check(privacy.includes('<span class="privacy-zh">'+approvedCN+'</span>'),'Chinese disclosure accurately explains optional per-visit details');
+check(privacy.includes('<span class="privacy-en">'+approvedEN+'</span>'),'English disclosure matches the optional per-visit privacy scope');
+check(privacy.includes('仅在你主动开启后')&&privacy.includes('Only if you enable it'),'Per-visit details require the visitor to opt in');
+check(privacy.includes('最近24小时内尚未过期')&&privacy.includes('unexpired records from the last 24 hours'),'The details window is described without promising immediate physical deletion');
+check(privacy.includes('最近90天')&&privacy.includes('last 90 days'),'Anonymous aggregate reporting retains its separate 90-day window');
+const disclosureShape=privacy.replace(/<p id="analytics-privacy-copy">[\s\S]*?<\/p>/,'<p id="analytics-privacy-copy"></p>');
+check(crypto.createHash('sha256').update(disclosureShape).digest('hex')==='6c6e8426927e71cc15fbfcbae2dff9f2a17cc4c16a4df2b79ec8bc08e355e83f','Every footer element outside the two approved paragraphs is unchanged');
+
 const marked=[...html.matchAll(/<section\b[^>]*data-analytics-section="([^"]+)"[^>]*>/g)];
 check(marked.length===8&&marked.map(m=>m[1]).join(',')===ids.join(','),'The eight presentation markers are unique and ordered');
 const starts=['class="hero"','class="film-feature"','id="why"','id="demo"','id="native-duo"','id="process"','id="design"','class="closing"'];
@@ -31,6 +43,7 @@ check(loading.appended.length===0,'No external request can delay the initial doc
 check(Object.keys(loading.listeners).join(',')==='load'&&loading.listeners.load.opts.once,'Optional loading waits until the original page load has completed');
 loading.listeners.load.fn();
 check(loading.appended.length===1&&loading.appended[0].async===true,'The optional external script is explicitly asynchronous');
+check(loading.appended[0].src==='https://followshot-analytics.cisong18.chatgpt.site/client.js?v=20261027-visit-details-1','The existing optional client is cache-versioned without adding a new host');
 check(loading.appended[0].referrerPolicy==='no-referrer','Optional request omits the page referrer');
 check(!('onload' in loading.appended[0])&&!('onerror' in loading.appended[0]),'External completion/failure cannot redirect or alter the original app');
 check(run('complete').appended.length===1,'Already-loaded documents initialize the optional service without blocking');
