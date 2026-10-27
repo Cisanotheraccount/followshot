@@ -34,6 +34,8 @@ check(/content:'Source footage · Simulated take'/.test(css), 'English take view
 
 check(/\.reference-thumb\{[^}]*background:#000;[^}]*color:#fff/.test(css), 'Camera reference thumbnail label has explicit white-on-black contrast');
 
+check(/\.capture-brief\{padding:0;/.test(css), 'Camera tip disclosure resets editorial details padding to keep the closed control compact');
+
 function target() {
   const events = new Map();
   return {
