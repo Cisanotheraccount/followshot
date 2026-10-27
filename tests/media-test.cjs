@@ -117,10 +117,11 @@ function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
   const document = target(); document.hidden=false; document.activeElement=null;
   document.getElementById = id => ['feed-video','preview-video'].includes(id) ? videos.find(video=>video.attributes.id===id)||null : (elements[id]??=element());
   const context = {
-    document, console, localStorage:{getItem:key=>storage[key]??null,setItem:(key,value)=>{storage[key]=String(value);}},
+    document, console, Event: class {constructor(type){this.type=type;}}, localStorage:{getItem:key=>storage[key]??null,setItem:(key,value)=>{storage[key]=String(value);}},
     matchMedia:()=>({matches:reduced}),
     setInterval(callback){const id=++sequence;timers.set(id,callback);return id;},clearInterval:id=>timers.delete(id),setTimeout(){},
     addEventListener(name,callback){handlers[`window:${name}`]=callback;},
+    dispatchEvent(event){handlers[`window:${event.type}`]?.(event);},
     IntersectionObserver:class {constructor(callback){observer=callback;}observe(){}},
     FollowshotLocale:{get language(){return locale;},t:(zh,en)=>locale==='en'?en:zh}
   };

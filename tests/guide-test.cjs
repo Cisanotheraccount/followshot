@@ -6,7 +6,8 @@ const vm = require('node:vm');
 const APP_PATH = path.resolve(__dirname, '../site/app.js');
 const STATE_KEY = 'followshot-demo-v1';
 const LANGUAGE_KEY = 'followshot-language-v1';
-const GUIDE_KEY = 'followshot-guide-v1';
+const GUIDE_KEY = 'followshot-guide-v2';
+const LEGACY_GUIDE_KEY = 'followshot-guide-v1';
 // Deterministic VM state/markup checks, not a browser/layout test.
 
 function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' ? 'en' : 'zh'} = {}) {
@@ -30,8 +31,9 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     },
     setAttribute(name, value) { this.attributes[name] = String(value); }, focus() { interactions.push(['focus', this.selector || '']); }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
     querySelector(selector) {
-      const result = element(); result.selector = selector;
       const action = selector.match(/^\[data-action="([^"]+)"\]$/)?.[1];
+      if (action && targets[selector]) return targets[selector];
+      const result = element(); result.selector = selector;
       if (action) {
         result.dataset.action = action;
         const markup = [...(elements.app?.innerHTML || '').matchAll(/<button\b([^>]*)>/g)].find(match => match[1].includes(`data-action="${action}"`));
@@ -49,6 +51,11 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     getElementById(id) { return elements[id] ??= element(); },
     addEventListener(name, callback) { handlers[`document:${name}`] = callback; }
   };
+  let appMarkup = '';
+  Object.defineProperty(document.getElementById('app'), 'innerHTML', {
+    get() { return appMarkup; },
+    set(value) { appMarkup = value; for (const key of Object.keys(targets)) delete targets[key]; }
+  });
   class Event { constructor(type) { this.type = type; } }
   const context = {
     console, document, Event, Date: {now: () => now},
@@ -61,7 +68,7 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     clearInterval(id) { timers.delete(id); },
     setTimeout() {},
     addEventListener(name, callback) { handlers[`window:${name}`] = callback; },
-    dispatchEvent(event) { handlers[`window:${event.type}`]?.(event); }
+    dispatchEvent(event) { interactions.push(['event', event.type]); handlers[`window:${event.type}`]?.(event); }
   };
   context.window = context;
   context.FollowshotLocale = {
@@ -77,6 +84,7 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     replay() { elements['guide-replay'].onclick(); },
     escape() { handlers['document:keydown']({key:'Escape', preventDefault() {}}); },
     html() { return elements.app.innerHTML; },
+    entry() { const entry = elements['entry-guide']; return entry && !entry.hidden ? entry.innerHTML : ''; },
     state() { return JSON.parse(storage[STATE_KEY] || '{}'); },
     click(action, data = {}) {
       handlers.click({target: {closest: () => ({dataset: {action, ...data}, disabled: false})}});
@@ -127,9 +135,23 @@ function guide(browser, expected, message = expected) {
   includes(browser, `data-guide-step="${expected}"`, `guide follows ${message}`);
   check((browser.html().match(/class="step-guide"/g) || []).length === 1, `one guide only: ${message}`);
 }
-function noGuide(browser, message) { check(!browser.html().includes('class="step-guide"'), message); }
+function noGuide(browser, message) { check(!browser.html().includes('class="step-guide"') && !browser.entry(), message); }
+function entryGuide(browser, expected, name) {
+  const enabled = browser.storage[GUIDE_KEY] !== 'off';
+  check(!browser.html().includes('class="step-guide"'), `${name} keeps guidance outside the scaled phone rather than inserting a feed panel`);
+  if (!enabled) {
+    check(!browser.entry(), `${name} respects a newly chosen Hide preference until replay`);
+    return;
+  }
+  check(Boolean(browser.entry()), `${name} shows its readable introductory guide immediately`);
+  check((expected === 'share' ? /分享|Share/ : /跟拍学习|Followshot/).test(browser.entry()) && browser.entry().includes('id="entry-guide-message"'), `${name} explains the actual ${expected} step`);
+  check(!/<button\b|guide-next|guide-locate/.test(browser.entry()), `${name} introduction adds no competing action button`);
+  const target = browser.targets[`[data-action="${expected}"]`];
+  check(target?.classList.contains('guide-target'), `${name} visibly marks the actual ${expected} control`);
+  check(target?.attributes['aria-describedby'] === 'entry-guide-message', `${name} links the real control to the readable introduction`);
+}
 function normalFeed(browser, name) {
-  noGuide(browser, `${name} has no feature hint before entry`);
+  entryGuide(browser, 'share', name);
   check(!/data-action="(?:resume|guide-skip|guide-next|guide-locate)"|step-guide-message|data-guide-label/.test(browser.html()), `${name} has no direct draft or guide controls`);
   check(!browser.elements.app.classList.contains('guide-active') && !browser.elements.app.classList.contains('guide-on'), `${name} has no guided class that hides ordinary feed controls`);
   check(['like','save-reference','share','play-feed'].every(action => browser.html().includes(`data-action="${action}"`)), `${name} preserves ordinary video interactions`);
@@ -137,7 +159,7 @@ function normalFeed(browser, name) {
   check(browser.html().includes('class="feednav"') && browser.html().includes('class="feedtop"'), `${name} preserves the normal feed navigation`);
 }
 function shareMenu(browser, name) {
-  noGuide(browser, `${name} has no hint before the feature is chosen`);
+  entryGuide(browser, 'learn', name);
   check(!browser.elements.app.classList.contains('guide-active') && !browser.elements.app.classList.contains('guide-on'), `${name} does not hide the ordinary sharing options`);
   check(browser.html().includes('class="share-row"') && browser.html().indexOf('class="share-row"') < browser.html().indexOf('data-action="learn"'), `${name} offers Followshot after ordinary sharing options`);
   check((browser.html().match(/data-action="learn"/g)||[]).length === 1, `${name} has one optional Followshot entry`);
@@ -166,7 +188,7 @@ function record(browser, ticks = 80) { browser.click('record'); browser.tick(tic
 const browser = createBrowser();
 normalFeed(browser, 'initial reference feed');
 check(browser.interactions.filter(item => item[0] === 'scroll').length === 0, 'initial feed does not hijack scrolling');
-check(!browser.targets['[data-action="share"]'], 'initial Share is not marked as a feature-guide target');
+check(browser.targets['[data-action="share"]']?.classList.contains('guide-target'), 'initial Reference marks Share without waiting for replay or feature entry');
 const initialState = stateData(browser);
 browser.replay();
 normalFeed(browser, 'home after replay');
@@ -416,22 +438,58 @@ check(stateData(guided)===skippedState && !guided.html().includes('class="overla
 guided.replay();guided.setLanguage('zh');compactHint(guided,'confirm-publish','replayed Chinese preview hint');
 includes(guided,'准备好后，查看模拟完成说明。','compact hint localizes without losing the current step');
 
+// Migration restores the missing first instruction without resetting authored work.
+for (const language of ['zh', 'en']) {
+  const saved = reloaded.state();
+  saved.title = 'My authored title / 我的创作'; saved.titleEdited = true;
+  saved.shots[0].tip = 'Keep <my exact> words & framing'; saved.shots[0].tipEdited = true;
+  const persisted = JSON.stringify(saved);
+  const legacy = createBrowser({storage:{[STATE_KEY]:persisted,[LEGACY_GUIDE_KEY]:'off'},language});
+  normalFeed(legacy, `${language} first Reference after legacy-off migration`);
+  check(legacy.storage[LEGACY_GUIDE_KEY] === 'off', `${language} migration does not rewrite the obsolete preference`);
+  check(legacy.storage[STATE_KEY] === persisted, `${language} first guide does not clear or rewrite the saved draft`);
+  check(legacy.entry().includes(language === 'zh' ? '分享' : 'Share'), `${language} first instruction uses the chosen language`);
+  check(!legacy.interactions.some(item => item[0] === 'scroll' || (item[0] === 'event' && item[1] === 'followshot:locate')), `${language} initial rendering does not scroll the page`);
+  legacy.replay();
+  normalFeed(legacy, `${language} legacy-off Reference after replay`);
+  check(legacy.interactions.some(item => item[0] === 'event' && item[1] === 'followshot:locate'), `${language} replay asks the whole-device fitter to locate the prototype`);
+  check(!legacy.interactions.some(item => item[0] === 'scroll'), `${language} replay never independently centers an inner Share button`);
+  check(legacy.interactions.at(-1)[0] === 'focus' && legacy.interactions.at(-1)[1] === '[data-action="share"]', `${language} replay focuses the real Share action after locating the whole device`);
+  legacy.click('share');
+  shareMenu(legacy, `${language} legacy-off Share introduction`);
+  check(legacy.entry().includes(language === 'zh' ? '跟拍学习' : 'Followshot'), `${language} Share instruction explains its secondary feature entry`);
+  legacy.replay(); shareMenu(legacy, `${language} legacy-off Share after replay`);
+  legacy.click('close-overlay'); normalFeed(legacy, `${language} Share cancel returns to first instruction`);
+  legacy.click('share'); legacy.click('learn');
+  guide(legacy, 'preview', `${language} migrated completed draft resumes inside Followshot`);
+  check(legacy.state().title === saved.title && legacy.state().shots[0].tip === saved.shots[0].tip, `${language} entry and replay preserve authored title and instruction`);
+  check(JSON.stringify(legacy.state().takes) === JSON.stringify(saved.takes), `${language} first-guide migration preserves every saved Take`);
+  legacy.click('guide-skip'); legacy.elements.reset.onclick();
+  confirmationOnly(legacy, 'reset-confirmed', `${language} reset dialog has no introduction`);
+  legacy.click('reset-confirmed');
+  normalFeed(legacy, `${language} explicit reset re-enables the first-step introduction`);
+  check(legacy.storage[GUIDE_KEY] === 'on', `${language} explicit reset persists the new enabled guide preference`);
+}
+
 // Source-level geometry contracts complement, but never replace, real browser QA.
 const css=fs.readFileSync(path.resolve(__dirname,'../site/style.css'),'utf8');
 const geometry=css.slice(css.lastIndexOf('/* Ordinary portrait handset and quiet, target-adjacent hints. */'));
 check(geometry.startsWith('/* Ordinary portrait handset'), 'the portrait handset geometry contract is present');
 const desktop=geometry.match(/\.device\{([^}]*)\}/)?.[1]||'';
-check(/width:390px(?:;|$)/.test(desktop)&&/height:844px!important/.test(desktop), 'desktop handset keeps 390×844 portrait dimensions instead of viewport-height squashing');
-check(/aspect-ratio:390\/844/.test(desktop)&&/min-height:0!important/.test(desktop), 'desktop handset ratio is explicit without a fat-phone minimum-height override');
+check(/width:390px(?:;|$)/.test(desktop)&&/height:844px!important/.test(desktop), 'the handset retains a 390×844 internal canvas for uniform viewport scaling');
+check(/aspect-ratio:390\/844/.test(desktop)&&/min-height:0!important/.test(desktop), 'the internal canvas ratio is explicit without a fat-phone minimum-height override');
 check(/\.device-wrap\{position:static!important\}/.test(geometry), 'handset container is not trapped in sticky positioning');
-const mobile=geometry.match(/@media\(max-width:760px\)\{\.device\{([^}]*)\}/)?.[1]||'';
-check(/width:min\(390px,100%\)/.test(mobile)&&/height:auto!important/.test(mobile)&&/aspect-ratio:390\/844/.test(mobile), 'mobile handset scales its height with the same portrait ratio');
+const fitStyles=css.slice(css.lastIndexOf('/* Fit the entire handset'));
+check(/\.device-stage>\.device\{[^}]*position:absolute;[^}]*width:390px;[^}]*height:844px!important;[^}]*transform-origin:top left/.test(fitStyles), 'final device styling uniformly scales the same canvas inside its measured stage on all widths');
 check(/\.guide-target:after\{[^}]*display:none!important;[^}]*content:none!important/.test(geometry), 'duplicate target Next-step badges are suppressed');
 check(/\.capture-idle>\.appfooter\{display:none\}/.test(geometry), 'empty camera review footer stays hidden before a Take exists');
 
 const entryStyles=css.slice(css.lastIndexOf('/* Learning is opt-in through Share'));
-check(/\.guide-target\{[^}]*box-shadow:inset 0 0 0 2px rgba\(255,255,255,\.85\)!important/.test(entryStyles), 'opted-in targets use an inset white edge rather than relying on a clipped outside outline');
+check(/\.guide-target\{[^}]*box-shadow:inset 0 0 0 3px #25f4ee!important/.test(fitStyles), 'the final actual-target edge is cyan and inset rather than relying on a clipped outside outline');
 check(/\.learn-entry\{[^}]*background:#f0f0f0;[^}]*border:1px solid #dedede/.test(entryStyles), 'the optional Share feature entry uses a neutral secondary surface');
+check(/\.entry-guide\{[^}]*background:#25f4ee;color:#092b2a;[^}]*font-size:var\(--text-body\)/.test(fitStyles), 'the external first-step introduction is cyan with dark unscaled body text');
+check(/\.entry-guide\[hidden\]\{display:none\}/.test(fitStyles), 'hiding the entry introduction removes its layout space');
+check(/\.device-caption\{display:none\}/.test(fitStyles), 'the fitted prototype omits the redundant caption rather than letting it extend below the viewport');
 
 // These check source styling contracts only; computed geometry remains browser QA.
 const cyanStyles=css.slice(css.lastIndexOf('/* Approved higher-visibility TikTok cyan'));
