@@ -4,7 +4,7 @@
   "private": true,
   "description": "Bilingual interactive Followshot concept",
   "scripts": {
-    "test": "node --check site/site-language.js && node --check site/app.js && node tests/state-test-original.cjs && node tests/i18n-state-test.cjs && node tests/assets-test.cjs && node tests/guide-test.cjs && node --check site/site-motion.js && node tests/media-test.cjs && node --check site/device-fit.js && node tests/fit-test.cjs && node tests/motion-test.cjs && node tests/story-test.cjs && node tests/tour-test.cjs && node --check site/native-duo.js && node tests/native-test.cjs && node tests/iphone-test.cjs && node tests/hero-test.cjs && node tests/footer-test.cjs",
+    "test": "node --check site/site-language.js && node --check site/app.js && node tests/state-test-original.cjs && node tests/i18n-state-test.cjs && node tests/assets-test.cjs && node tests/guide-test.cjs && node --check site/site-motion.js && node tests/media-test.cjs && node --check site/device-fit.js && node tests/fit-test.cjs && node tests/motion-test.cjs && node tests/story-test.cjs && node tests/tour-test.cjs && node --check site/native-duo.js && node tests/native-test.cjs && node tests/iphone-test.cjs && node tests/hero-test.cjs && node tests/footer-test.cjs && node tests/display-bounds-test.cjs",
     "dev": "node preview.cjs"
   },
   "engines": {
