@@ -133,4 +133,14 @@ check(!missing.device.style.transform && missing.scrolls.length===0, 'missing op
 check(!/\.scrollIntoView\(/.test(source), 'the fitter never centers an inner Share or Record control independently');
 check(!/localStorage|\.play\(|\.pause\(/.test(source), 'fitting has no draft-storage or media-playback side effects');
 
+const clipped = createFit(); clipped.flush(); clipped.context.scrollY=1780;
+clipped.event('followshot:layout'); clipped.flush();
+check(clipped.scrolls.length===1 && clipped.scrolls[0].behavior==='auto', 'a changed partially visible layout recovers the whole phone without a smooth focus jump');
+close(clipped.config.documentTop-clipped.context.scrollY, clipped.config.headerHeight+16, 'layout recovery restores the entire wrapper below sticky navigation');
+clipped.event('followshot:layout'); clipped.flush();
+check(clipped.scrolls.length===1, 'an already fitted visible layout is not repeatedly recentered');
+const offscreen=createFit(); offscreen.flush(); offscreen.event('followshot:layout'); offscreen.flush();
+check(offscreen.scrolls.length===0, 'background simulator renders do not pull a reader away from other sections');
+check(fs.readFileSync(path.join(root,'style.css'),'utf8').includes('.demo-section{overflow-anchor:none}'), 'dynamic demo descendants cannot become browser scroll anchors');
+
 console.log(`ALL ${checks} DEVICE FIT VM TESTS PASSED`);

@@ -29,7 +29,7 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
       toggle(name, force) { const enabled = force === undefined ? !this.values.has(name) : force; enabled ? this.values.add(name) : this.values.delete(name); return enabled; },
       contains(name) { return this.values.has(name); }
     },
-    setAttribute(name, value) { this.attributes[name] = String(value); }, focus() { interactions.push(['focus', this.selector || '']); }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
+    setAttribute(name, value) { this.attributes[name] = String(value); }, focus(options) { interactions.push(['focus', this.selector || '', options]); document.activeElement = this; }, scrollIntoView(options) { interactions.push(['scroll', this.selector || '', options]); }, setSelectionRange() {},
     querySelector(selector) {
       const action = selector.match(/^\[data-action="([^"]+)"\]$/)?.[1];
       if (action && targets[selector]) return targets[selector];
@@ -42,7 +42,7 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
       }
       targets[selector] = result; return result;
     },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) { return selector === 'button:not(:disabled),a[href],input' ? dialogEdges : []; },
     insertAdjacentHTML(_position, source) { this.innerHTML += source; this.lastElementChild = element(); },
     addEventListener(name, callback) { handlers[name] = callback; }
   });
@@ -51,6 +51,8 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     getElementById(id) { return elements[id] ??= element(); },
     addEventListener(name, callback) { handlers[`document:${name}`] = callback; }
   };
+  const dialogEdges = [element(), element()];
+  dialogEdges[0].selector = 'dialog-first'; dialogEdges[1].selector = 'dialog-last';
   let appMarkup = '';
   Object.defineProperty(document.getElementById('app'), 'innerHTML', {
     get() { return appMarkup; },
@@ -82,6 +84,13 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
     handlers, timers, elements, storage, interactions, targets,
     advance(ms) { now += ms; },
     replay() { elements['guide-replay'].onclick(); },
+    focusAction(action) { elements.app.querySelector(`[data-action="${action}"]`).focus({preventScroll:true}); },
+    tabEdge(last, shiftKey) {
+      document.activeElement = dialogEdges[last ? 1 : 0];
+      let prevented = false;
+      handlers['document:keydown']({key:'Tab',shiftKey,preventDefault(){prevented=true;}});
+      return prevented;
+    },
     escape() { handlers['document:keydown']({key:'Escape', preventDefault() {}}); },
     html() { return elements.app.innerHTML; },
     entry() { const entry = elements['entry-guide']; return entry && !entry.hidden ? entry.innerHTML : ''; },
@@ -472,6 +481,37 @@ for (const language of ['zh', 'en']) {
 }
 
 // Source-level geometry contracts complement, but never replace, real browser QA.
+// Programmatic focus must not undo the complete-phone viewport placement.
+const focusSource=fs.readFileSync(APP_PATH,'utf8');
+const focusCalls=[...focusSource.matchAll(/\.focus(?:\?\.)?\s*\(\s*([^)]*)\)/g)];
+check(focusCalls.length>=8, 'focus regression covers guide, modal, restore, keyboard trap, and language call sites');
+focusCalls.forEach((call,index)=>check(/preventScroll\s*:\s*true/.test(call[1]), `programmatic focus call ${index+1} explicitly prevents native viewport scrolling`));
+const focusBrowser=createBrowser();
+function fixedViewportFocus(action, name) {
+  const before=focusBrowser.interactions.length;
+  action();
+  const events=focusBrowser.interactions.slice(before);
+  const focuses=events.filter(event=>event[0]==='focus');
+  check(focuses.length>0, `${name} keeps meaningful keyboard focus`);
+  check(focuses.every(event=>event[2]?.preventScroll===true), `${name} never lets native focus scroll the oversized internal canvas`);
+  check(!events.some(event=>event[0]==='scroll'||(event[0]==='event'&&event[1]==='followshot:locate')), `${name} does not add a competing page-location operation`);
+}
+fixedViewportFocus(()=>focusBrowser.click('share'),'opening Share');
+shareMenu(focusBrowser,'Share after non-scrolling modal focus');
+focusBrowser.focusAction('learn');
+fixedViewportFocus(()=>focusBrowser.setLanguage('en'),'changing language inside Share');
+shareMenu(focusBrowser,'English Share after focus restoration');
+fixedViewportFocus(()=>check(focusBrowser.tabEdge(true,false),'Tab at the final dialog control wraps to its first control'),'forward modal focus trap');
+check(focusBrowser.interactions.filter(event=>event[0]==='focus').at(-1)[1]==='dialog-first','forward focus trap lands on the first modal control');
+fixedViewportFocus(()=>check(focusBrowser.tabEdge(false,true),'Shift+Tab at the first dialog control wraps to its last control'),'reverse modal focus trap');
+check(focusBrowser.interactions.filter(event=>event[0]==='focus').at(-1)[1]==='dialog-last','reverse focus trap lands on the last modal control');
+fixedViewportFocus(()=>focusBrowser.click('close-overlay'),'cancelling Share');
+normalFeed(focusBrowser,'Reference after non-scrolling Share cancel');
+fixedViewportFocus(()=>focusBrowser.elements.reset.onclick(),'opening reset confirmation');
+confirmationOnly(focusBrowser,'reset-confirmed','reset after non-scrolling modal focus');
+fixedViewportFocus(()=>focusBrowser.click('close-overlay'),'cancelling reset confirmation');
+normalFeed(focusBrowser,'Reference after non-scrolling reset cancel');
+
 const css=fs.readFileSync(path.resolve(__dirname,'../site/style.css'),'utf8');
 const geometry=css.slice(css.lastIndexOf('/* Ordinary portrait handset and quiet, target-adjacent hints. */'));
 check(geometry.startsWith('/* Ordinary portrait handset'), 'the portrait handset geometry contract is present');
