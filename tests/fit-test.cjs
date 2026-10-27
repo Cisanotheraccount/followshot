@@ -143,4 +143,11 @@ const offscreen=createFit(); offscreen.flush(); offscreen.event('followshot:layo
 check(offscreen.scrolls.length===0, 'background simulator renders do not pull a reader away from other sections');
 check(fs.readFileSync(path.join(root,'style.css'),'utf8').includes('.demo-section{overflow-anchor:none}'), 'dynamic demo descendants cannot become browser scroll anchors');
 
+for (const event of ['load','followshot-language-change','resize','orientationchange']) {
+  const shifted=createFit(); shifted.flush(); shifted.context.scrollY=1692;
+  shifted.event(event); shifted.flush();
+  check(shifted.scrolls.length===1 && shifted.scrolls[0].behavior==='auto', `${event} corrects a visible frame pushed to the viewport edge by late layout`);
+  close(shifted.config.documentTop-shifted.context.scrollY, shifted.config.headerHeight+16, `${event} leaves top and bottom breathing room`);
+}
+
 console.log(`ALL ${checks} DEVICE FIT VM TESTS PASSED`);
