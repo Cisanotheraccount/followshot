@@ -1,0 +1,151 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {createBrowser}=require('./guide-test.cjs');
+const root=path.resolve(__dirname,'../site');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const source=fs.readFileSync(path.join(root,'app.js'),'utf8');
+const locale=fs.readFileSync(path.join(root,'site-language.js'),'utf8');
+let count=0;
+const check=(value,label)=>{assert.ok(value,label);count++;console.log('PASS',label);};
+const data=b=>JSON.stringify(b.state());
+const takes=b=>JSON.stringify(b.state().takes||{});
+const overlay=b=>b.html().includes('class="overlay"');
+const nextDisabled=b=>b.elements['tour-next'].disabled;
+const prevDisabled=b=>b.elements['tour-prev'].disabled;
+const reachCapture=b=>{for(let i=0;i<4;i++)b.tourNext();};
+const reachPreview=b=>{for(let i=0;i<6;i++)b.tourNext();};
+const controlText=(b,id)=>b.elements[id].innerHTML.replace(/<[^>]*>/g,'');
+
+check(html.indexOf('id="demo-tour"')>html.indexOf('class="device-stage"'),'walkthrough navigation follows the phone stage instead of replacing app controls');
+check((html.match(/id="tour-next"/g)||[]).length===1&&(html.match(/id="tour-prev"/g)||[]).length===1,'the website adds exactly one Previous and one Next control');
+check(html.includes('id="tour-status"')&&html.includes('id="tour-label"'),'external navigation has its own status and label');
+check(html.includes('02 / 亲手试一试，不止看看')&&locale.includes('"02 / 亲手试一试，不止看看"'),'demo eyebrow is Chinese by default with a bilingual mapping');
+check(/title|duration|tip/.test(source),'the original editable authoring implementation remains present');
+
+for(const language of ['zh','en']){
+ const b=createBrowser({language});
+ check(prevDisabled(b)&&!nextDisabled(b),`${language}: fresh Reference disables Previous and allows Next`);
+ check(controlText(b,'tour-next').includes(language==='zh'?'下一步':'Next')&&controlText(b,'tour-prev').includes(language==='zh'?'上一步':'Previous'),`${language}: both external control labels localize`);
+ check(!b.html().includes('id="tour-next"'),`${language}: website navigation is not rendered inside the simulated app`);
+ b.tourNext();
+ check(overlay(b)&&b.html().includes('data-action="learn"')&&b.timers.size===0,`${language}: first Next opens Share rather than entering the feature`);
+ check(!prevDisabled(b)&&!nextDisabled(b),`${language}: Share allows backward and forward walkthrough navigation`);
+ const share=b.html();b.tourNext(0,true);b.tourNext(249,true);
+ check(b.html()===share&&b.timers.size===0,`${language}: rapid repeated Next cannot skip Share within 250ms`);
+ b.tourNext(1,true);
+ check(b.state().screen==='analyze'&&b.timers.size===1,`${language}: next permitted action enters one preparation session`);
+ const lateAnalysis=[...b.timers.values()];b.tourPrev();
+ check(overlay(b)&&b.html().includes('data-action="learn"')&&b.timers.size===0,`${language}: Previous returns from preparation to Share and cancels its timer`);
+ const afterBack=data(b),afterBackHtml=b.html();lateAnalysis.forEach(callback=>{for(let i=0;i<20;i++)callback();});
+ check(data(b)===afterBack&&b.html()===afterBackHtml,`${language}: a queued old preparation callback cannot escape the restored Share screen`);
+ b.tourPrev();check(!overlay(b)&&b.html().includes('class="feed ')&&prevDisabled(b),`${language}: Previous from Share returns to the true start`);
+ b.tourNext();b.tourNext();b.tourNext();
+ check(b.state().screen==='plan'&&b.timers.size===0,`${language}: Next on preparation enters the editable plan without waiting`);
+ b.tourNext();check(b.state().screen==='capture',`${language}: Next on the plan opens the first incomplete camera`);
+ check(/跳过计时|skip(?: the)? timer/i.test(b.elements['tour-status'].textContent),`${language}: the shortcut clearly explains that it skips the simulated timer`);
+ b.tourNext();check(b.state().screen==='review'&&b.state().takes[1].length===1&&!b.state().takes[1][0].selected,`${language}: camera Next creates one unselected simulated take and opens Review immediately`);
+ const reviewTakes=takes(b);b.tourNext(0,true);
+ check(b.state().screen==='review'&&takes(b)===reviewTakes,`${language}: fast repeated camera shortcut does not fill the entire story immediately`);
+ b.tourNext();
+ check(b.state().screen==='preview'&&b.state().shots.every(shot=>b.state().takes[shot.id].length===1&&b.state().takes[shot.id][0].selected),`${language}: Review Next fills only missing examples and reaches a complete preview`);
+ check(nextDisabled(b)&&!prevDisabled(b),`${language}: Preview disables Next but retains Previous`);
+ const preview=data(b);b.tourNext(300,true);
+ check(data(b)===preview&&!overlay(b),`${language}: even a forced Preview Next cannot open confirmation or publish`);
+ const previewTakes=takes(b);b.tourPrev();
+ check(b.state().screen==='review'&&takes(b)===previewTakes,`${language}: Previous from Preview restores Review without deleting completed takes`);
+  check(b.html().includes(language==='zh'?'选用并预览':'Use and preview'),`${language}: completed-story Review labels its real action as Preview rather than a nonexistent next shot`);
+ b.tourNext();check(b.state().screen==='preview'&&takes(b)===previewTakes,`${language}: repeated review-to-preview navigation never duplicates takes`);
+ b.setLanguage(language==='zh'?'en':'zh');
+ check(b.state().screen==='preview'&&takes(b)===previewTakes&&nextDisabled(b),`${language}: language switch preserves tour position, state and safety boundary`);
+ b.click('confirm-publish');
+ check(prevDisabled(b)&&nextDisabled(b),`${language}: both external controls disable while confirmation is open`);
+ const confirmed=data(b),confirmedHtml=b.html();b.tourNext(300,true);b.tourPrev(300,true);
+ check(data(b)===confirmed&&b.html()===confirmedHtml,`${language}: forced external controls cannot dismiss or approve publication`);
+ check(!b.entry()&&!/class="step-guide"/.test(b.html()),`${language}: confirmation still has no cyan tutorial panel`);
+ b.click('close-overlay');check(b.state().screen==='preview'&&takes(b)===previewTakes,`${language}: cancelling confirmation preserves all takes`);
+ b.click('confirm-publish');b.click('publish');
+ check(b.state().screen==='success'&&nextDisabled(b),`${language}: success requires the real explicit Confirm action and disables external Next`);
+ b.tourNext(300,true);check(b.state().screen==='success',`${language}: external Next cannot restart after success`);
+ b.tourPrev();check(b.state().screen==='preview'&&takes(b)===previewTakes,`${language}: Previous from success returns to preview without changing takes`);
+}
+
+const recording=createBrowser();reachCapture(recording);recording.click('record');recording.tick(10);
+const lateRecording=[...recording.timers.values()];recording.tourNext();
+check(recording.state().screen==='review'&&recording.timers.size===0&&recording.state().takes[1].length===1,'Next during simulated recording cancels the timer and creates exactly one review take');
+const skippedRecording=data(recording);lateRecording.forEach(callback=>{for(let i=0;i<80;i++)callback();});
+check(data(recording)===skippedRecording,'a queued recording callback cannot add a second take after the shortcut');
+check(recording.state().draft===true,'the first shortcut-created unselected Take is persisted as a resumable draft');
+const shortcutReload=createBrowser({storage:{...recording.storage}});shortcutReload.tourNext();shortcutReload.tourNext();
+check(shortcutReload.state().screen==='plan'&&shortcutReload.state().takes[1].length===1&&shortcutReload.timers.size===0,'reloading an unselected shortcut Take resumes its saved plan without rerunning preparation');
+shortcutReload.tourNext();shortcutReload.tourNext();
+check(shortcutReload.state().screen==='review'&&shortcutReload.state().takes[1].length===1,'re-entering the shortcut camera after reload reuses the preserved Take instead of duplicating it');
+recording.tourPrev();check(recording.state().screen==='capture'&&recording.state().takes[1].length===1,'Previous from shortcut Review returns to Capture while keeping its take');
+recording.click('record');const pendingRecord=[...recording.timers.values()];recording.tourPrev();
+check(recording.state().screen==='plan'&&recording.timers.size===0,'Previous during recording returns to Plan and stops recording');
+const backedRecord=data(recording);pendingRecord.forEach(callback=>{for(let i=0;i<80;i++)callback();});
+check(data(recording)===backedRecord,'queued recording work cannot change a plan restored by Previous');
+
+const regular=createBrowser();regular.click('share');regular.click('learn');regular.tick(10);regular.click('start-capture');regular.click('record');regular.tick(30);regular.click('use-take');
+check(regular.state().screen==='capture'&&regular.state().current===1,'ordinary app actions still reach the second camera');
+const regularTakes=takes(regular);regular.tourPrev();
+check(regular.state().screen==='review'&&regular.state().current===0&&takes(regular)===regularTakes,'tour history follows ordinary app navigation and preserves the selected earlier take');
+regular.tourPrev();check(regular.state().screen==='capture'&&regular.state().current===0&&takes(regular)===regularTakes,'mixed-mode Previous restores the actual previous camera rather than resetting the flow');
+const reorder=createBrowser();reachCapture(reorder);reorder.click('record');reorder.tick(30);reorder.click('use-take');reorder.go('plan');reorder.click('move-up',{id:'2'});
+const reorderedIds=reorder.state().shots.map(shot=>shot.id).join(',');reorder.tourPrev();
+check(reorder.state().screen==='capture'&&reorder.state().shots[reorder.state().current].id===2,'history restores the captured shot identity after an authored plan reorder, not its obsolete index');
+check(reorder.state().shots.map(shot=>shot.id).join(',')===reorderedIds&&reorder.state().takes[1][0].selected,'history restoration preserves the new authored order and earlier selected take');
+
+const template=createBrowser();reachCapture(template);const saved=template.state();
+saved.title='My exact title / 我的故事';saved.titleEdited=true;saved.draft=true;
+saved.shots=[saved.shots[2],saved.shots[0],saved.shots[1],saved.shots[3]];
+saved.shots[0].tip='Keep <every> authored word & duration';saved.shots[0].tipEdited=true;saved.shots[0].duration=7;
+saved.takes={1:[{number:1,selected:true},{number:2,selected:false}],2:[{number:3,selected:false},{number:4,selected:false}],4:[{number:8,selected:true}]};
+const authored=JSON.stringify({title:saved.title,shots:saved.shots});
+const restored=createBrowser({storage:{'followshot-demo-v1':JSON.stringify(saved)}});
+restored.tourNext();restored.tourNext();
+check(restored.state().screen==='plan'&&restored.timers.size===0,'external Share Next restores a partial draft without rerunning preparation');
+restored.tourNext();check(restored.state().shots[restored.state().current].id===3,'restored tour chooses the first incomplete shot in the authored order');
+restored.tourNext();restored.tourNext();
+const completed=restored.state();
+check(completed.takes[1][0].selected&&!completed.takes[1][1].selected&&completed.takes[1].length===2,'filling missing shots preserves an existing selected take and its alternate');
+check(completed.takes[2][1].selected&&!completed.takes[2][0].selected&&completed.takes[2].length===2,'a different unselected shot uses its latest existing take instead of creating another');
+check(completed.takes[3].length===1&&completed.takes[3][0].selected&&completed.takes[4][0].number===8&&completed.takes[4][0].selected,'only the absent shot is synthesized; the final existing selection remains intact');
+check(JSON.stringify({title:completed.title,shots:completed.shots})===authored,'shortcuts preserve authored title, order, framing, duration and exact instruction text');
+const completeStorage={'followshot-demo-v1':JSON.stringify(completed)};const completeReload=createBrowser({storage:completeStorage});completeReload.tourNext();completeReload.tourNext();
+check(completeReload.state().screen==='preview'&&nextDisabled(completeReload),'external entry restores a completed draft directly to safe Preview');
+completeReload.go('plan');const readyTakes=takes(completeReload);completeReload.tourNext();
+check(completeReload.state().screen==='preview'&&takes(completeReload)===readyTakes,'Next on an already-complete plan returns to Preview without recording again');
+completeReload.click('edit-current');completeReload.tourNext();
+check(completeReload.state().screen==='review'&&takes(completeReload)===readyTakes,'tour Review of an already-selected shot does not append another take');
+completeReload.tourNext();
+check(completeReload.state().screen==='preview'&&takes(completeReload)===readyTakes,'review shortcut keeps existing selected versions unchanged');
+
+const selected=JSON.parse(JSON.stringify(saved));selected.shots=[selected.shots[1],selected.shots[2],selected.shots[0],selected.shots[3]];selected.takes[3]=[{number:1,selected:true}];
+const choose=createBrowser({storage:{'followshot-demo-v1':JSON.stringify(selected)}});choose.tourNext();choose.tourNext();choose.tourNext();choose.tourNext();
+check(choose.state().shots[choose.state().current].id===2&&choose.state().screen==='review','an existing unselected shot reaches Review without adding a take');
+choose.click('select-take',{index:'0'});choose.tourNext();
+check(choose.state().takes[2][0].selected&&!choose.state().takes[2][1].selected,'Review shortcut respects the currently displayed valid choice rather than always choosing latest');
+
+for(const kind of ['reference','cancel','reset']){
+ const b=createBrowser();
+ if(kind==='cancel'){b.tourNext();b.tourNext();b.click('cancel-analysis');}
+ else {reachCapture(b);if(kind==='reference')b.click('reference');else b.elements.reset.onclick();}
+ check(overlay(b)&&prevDisabled(b)&&nextDisabled(b),`${kind}: both external controls disable while the app dialog is open`);
+ const snapshot=data(b),markup=b.html();b.tourPrev(300,true);b.tourNext(300,true);
+ check(data(b)===snapshot&&b.html()===markup,`${kind}: forced navigation cannot bypass the app dialog`);
+ b.click('close-overlay');check(data(b)===snapshot,`${kind}: closing the dialog preserves work`);
+}
+
+const previewTimer=createBrowser();reachPreview(previewTimer);const latePreview=[...previewTimer.timers.values()];previewTimer.tourPrev();
+const previewBack=data(previewTimer),previewBackHtml=previewTimer.html();latePreview.forEach(callback=>{for(let i=0;i<20;i++)callback();});
+check(data(previewTimer)===previewBack&&previewTimer.html()===previewBackHtml,'queued preview playback cannot update a restored Review screen');
+const reset=createBrowser();reachPreview(reset);const beforeReset=data(reset);reset.elements.reset.onclick();reset.click('close-overlay');
+check(data(reset)===beforeReset&&!prevDisabled(reset),'cancelling Reset preserves both completed work and usable walkthrough history');
+reset.elements.reset.onclick();reset.click('reset-confirmed');
+check(reset.state().screen==='feed'&&Object.keys(reset.state().takes).length===0&&prevDisabled(reset),'explicit confirmed Reset clears its obsolete tour history together with demo takes');
+const afterReset=data(reset);reset.tourPrev(300,true);
+check(data(reset)===afterReset,'a forced Previous cannot resurrect stale Review screens after explicit Reset');
+reset.tourNext();check(overlay(reset)&&reset.html().includes('data-action="learn"'),'a reset walkthrough can start again immediately through the secondary Share entry');
+check(!/\.focus\s*\(\s*\)/.test(source),'new walkthrough code does not reintroduce naked native-scrolling focus');
+console.log(`ALL ${count} TOUR VM TESTS PASSED`);

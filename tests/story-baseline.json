@@ -1,0 +1,11 @@
+{
+  "commit": "ccd919787e70ae0172fe049a39934b6615d9af63",
+  "unchanged_runtime_sha256": {
+    "site/app.js": "1c5b10a3bcc830c830f1162fa65cf7d56ac216e538308901268b83d7e60c1a03",
+    "site/device-fit.js": "0eae744464900c3c84c22f54fe59e33adb657a9bce35ec3d432c555a3b853884",
+    "site/site-motion.js": "afd24b7cbeead86e710e970715f5423f22af3c45654aa3108d68fbba4cf25925",
+    "site/site-motion.css": "626a5f3c5758f6bd73440a2b3d2e65b58fc1ae0fcabc5c652d2f518bdde2c504",
+    "site/style.css": "5e8e289961500ede418accf25f106efcf3541bf11a0a92f4ca79d31dd856ee42"
+  },
+  "outside_why_sha256": "ad78b213cac397ed5ec21c26d14207fe7a3419db5f8eed746ca2681006bc73aa"
+}

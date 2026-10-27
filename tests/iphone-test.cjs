@@ -1,0 +1,80 @@
+const {normalizeFooterHTML} = require('./footer-normalize.cjs');
+const {normalizeHeroHTML, normalizeHeroLocale} = require('./hero-normalize.cjs');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const root = path.resolve(__dirname, '..');
+const html = normalizeHeroHTML(normalizeFooterHTML(fs.readFileSync(path.join(root, 'site/index.html'), 'utf8')));
+const css = fs.readFileSync(path.join(root, 'site/iphone-device.css'), 'utf8');
+const originalCSS = fs.readFileSync(path.join(root, 'site/style.css'), 'utf8');
+const fit = fs.readFileSync(path.join(root, 'site/device-fit.js'), 'utf8');
+const baseline = require('./iphone-baseline.json');
+const {normalizeIphone, originalStatus, approvedStatus, linkPattern} = require('./iphone-normalize.cjs');
+const sha = value => crypto.createHash('sha256').update(value).digest('hex');
+let count = 0;
+const check = (value, label) => { assert.ok(value, label); count++; console.log('PASS', label); };
+
+check(baseline.commit === '451b65b961eabc10ffb90e6ebf2f75041a727413', 'iPhone presentation baseline is the preceding approved private version');
+check((html.match(/href="iphone-device\.css\?v=[^"]+"/g) || []).length === 1 && linkPattern.test(html), 'Exactly one local versioned iPhone stylesheet is linked');
+check(html.indexOf('href="iphone-device.css') > html.indexOf('href="native-duo.css'), 'Scoped iPhone overrides load after the unchanged existing styles');
+check(!/@import|@font-face|url\(|https?:|data:/.test(css), 'Apple-like typography uses local OS fonts without downloads or embedded font binaries');
+check(!/animation:|transition:|@keyframes/.test(css), 'Device cosmetics add no new animation or control delay');
+const rules = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(match => ({selectors: match[1].trim().split(',').map(selector => selector.trim()), body: match[2]}));
+check(rules.length >= 8 && rules.every(rule => rule.selectors.every(selector => /^#demo \.device(?:$|[\s:.#[])/.test(selector))), 'Every device rule is confined to the web demo phone');
+check(!/@media|@supports|:root|\bhtml\b|\bbody\b|!important/.test(css), 'No global or responsive override changes the surrounding website or native showcase');
+const deviceRule = rules.find(rule => rule.selectors.length === 1 && rule.selectors[0] === '#demo .device');
+check(Boolean(deviceRule), 'The font family and chassis are defined on the demo device only');
+check(/font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",system-ui,"Segoe UI","Microsoft YaHei","Noto Sans CJK SC",sans-serif/.test(deviceRule.body), 'Font stack prefers Apple system and PingFang with honest cross-platform fallbacks');
+check(!/TikTok|SF Pro|San Francisco/.test(css), 'No remote TikTok font or falsely bundled Apple font is imposed inside the simulator');
+const controls = rules.find(rule => rule.selectors.includes('#demo .device button'));
+check(controls?.selectors.join('|') === ['button','input','select','textarea'].map(tag => '#demo .device ' + tag).join('|') && controls.body === 'font-family:inherit', 'Buttons and all editable controls inherit the same local device font');
+check(!/(?:^|;)\s*(?:width|height|min-width|max-width|min-height|max-height|aspect-ratio|transform|position|display|overflow)\s*:/.test(deviceRule.body), 'Chassis cosmetics cannot alter the established outer phone dimensions, fitting or clipping');
+check(/border-radius:48px/.test(deviceRule.body) && /border-color:#222326/.test(deviceRule.body), 'Approved rounded chassis and restrained border are scoped to the phone');
+check(!/(?:^|;)\s*font-size\s*:/.test(deviceRule.body), 'The device font change preserves existing text-size hierarchy');
+check(!/#app|\.feed|\.camera|\.guide|\.entry|\.demo-tour|\.native/.test(css), 'No app screen, guide, tour or native layout is restyled in this bounded change');
+check(/\.device-stage>\.device\{[^}]*width:390px;[^}]*height:844px!important/.test(originalCSS), 'The established device remains 390 by 844 before uniform viewport scaling');
+check(/Math\.min\(1, availableWidth \/ 390, availableHeight \/ 844\)/.test(fit) && /stage\.style\.width = \(390 \* scale\)/.test(fit) && /stage\.style\.height = \(844 \* scale\)/.test(fit), 'Viewport-fitting geometry still uses the same slender 390:844 phone');
+
+const statuses = [...html.matchAll(/<div class="status"[^>]*>[\s\S]*?<\/div>/g)].map(match => match[0]);
+check(statuses.length === 1 && statuses[0] === approvedStatus, 'The sole decorative status bar exactly matches the approved markup fixture');
+const status = statuses[0];
+check(!html.includes(originalStatus) && !/[▂▃▅▰]/.test(status), 'The former font-dependent signal and battery glyphs are removed');
+check(status.startsWith('<div class="status" aria-hidden="true">'), 'Simulated time and device indicators are explicitly decorative, not live telemetry');
+check(!/<button|<a\b|tabindex|role="button"|onclick|data-action/.test(status), 'Decorative status chrome creates no fake interactive controls');
+check(/<span class="status-time">9:41<\/span>/.test(status), 'Status time is a clean fixed text element');
+check(/<span class="island"><\/span>/.test(status), 'The camera island remains an empty CSS-decorated element');
+const icons = [...status.matchAll(/<svg\b[^>]*>[\s\S]*?<\/svg>/g)].map(match => match[0]);
+check(icons.length === 3, 'Exactly three geometric status icons are present');
+for (const [name, viewBox] of [['signal','0 0 18 14'], ['wifi','0 0 18 14'], ['battery','0 0 27 14']]) {
+  const icon = icons.find(markup => markup.includes(`class="status-${name}"`)) || '';
+  check(icon.includes(`viewBox="${viewBox}"`) && icon.includes('aria-hidden="true"'), `${name}: vector geometry has fixed proportions and decorative semantics`);
+  check(/<(?:rect|path|circle)\b/.test(icon) && !/<text\b|<image\b|<foreignObject\b|<use\b|href=/.test(icon), `${name}: indicator uses real inline geometry, never a font glyph or external icon`);
+  check(icon.includes('currentColor'), `${name}: geometry inherits the high-contrast status foreground`);
+}
+const signal = icons.find(icon => icon.includes('status-signal'));
+check((signal.match(/<rect\b/g) || []).length === 4, 'Signal has four independently drawn ascending bars');
+const statusRule = rules.find(rule => rule.selectors[0] === '#demo .device .status');
+check(/height:52px/.test(statusRule.body) && /pointer-events:none/.test(statusRule.body) && /user-select:none/.test(statusRule.body), 'Status area keeps a fixed safe area without intercepting input or selection');
+check(/background:#090909/.test(statusRule.body) && /color:#fff/.test(statusRule.body), 'Status indicators retain explicit light-on-dark contrast');
+const timeRule = rules.find(rule => rule.selectors[0] === '#demo .device .status-time');
+check(/font-size:17px/.test(timeRule.body) && /font-weight:600/.test(timeRule.body) && /font-variant-numeric:tabular-nums/.test(timeRule.body), 'Time uses the approved compact, stable system typography');
+const island = rules.find(rule => rule.selectors[0] === '#demo .device .island');
+check(/width:116px/.test(island.body) && /height:32px/.test(island.body), 'Decorative island uses the approved compact proportions');
+const home = rules.find(rule => rule.selectors[0] === '#demo .device .home-indicator');
+check(/width:132px/.test(home.body) && /height:5px/.test(home.body) && /pointer-events:none/.test(home.body), 'Bottom indicator remains a short decorative bar, not an input target');
+check(/mix-blend-mode:difference/.test(home.body), 'Bottom indicator retains contrast when a light share sheet is underneath');
+const referenceLabel = rules.find(rule => rule.selectors[0] === '#demo .device .reference-thumb span');
+check(referenceLabel?.body === 'font-size:16px;overflow-wrap:normal', 'Only the reference-thumbnail label gets a bounded text-width correction without cropping or hiding its English copy');
+
+check(normalizeIphone(approvedStatus) === originalStatus, 'Normalizer restores only the exact approved new status bytes');
+const changedStatus = approvedStatus.replace('9:41', '9:42');
+check(normalizeIphone(changedStatus) === changedStatus, 'Normalizer will not conceal a changed status bar');
+const unrelated = '<link rel="stylesheet" href="other.css?v=1"><div class="status">Unexpected replacement</div>';
+check(normalizeIphone(unrelated) === unrelated, 'Normalizer never removes another stylesheet or arbitrary status markup');
+check(sha(normalizeIphone(html)) === baseline.html_sha256, 'Every other HTML byte remains identical, including full demo, native showcase, bilingual content and resources');
+for (const [file, hash] of Object.entries(baseline.unchanged_site_sha256)) {
+  check(sha(file === 'site/site-language.js' ? normalizeHeroLocale(fs.readFileSync(path.join(root, file), 'utf8')) : fs.readFileSync(path.join(root, file))) === hash, `All prior runtime and media bytes remain unchanged: ${file}`);
+}
+check(!/src="iphone[^"\s]*\.js/.test(html), 'No new device JavaScript is added');
+console.log(`PASS ${count} iPhone presentation assertions`);
