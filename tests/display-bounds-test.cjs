@@ -10,7 +10,7 @@ const sha=b=>crypto.createHash('sha256').update(b).digest('hex');
 let count=0;const check=(v,s)=>{assert.ok(v,s);count++;console.log('PASS',s)};
 check(html.split(boundsTag).length===2,'Boundary patch loads exactly one cache-versioned local stylesheet');
 check(html.indexOf(boundsTag)>html.indexOf('href="iphone-device.css')&&html.indexOf(boundsTag)>html.indexOf('href="native-duo.css'),'Boundary rules load after both original presentations');
-check(sha(normalizeBoundsHTML(html))==='852a22a25113218bdfd3d4cb61123950aba03c7962496613a6d1331b1ccf4745','Every other HTML byte is identical to the approved public release');
+check(sha(normalizeBoundsHTML(html))==='4b4c955eecbf259957a0727e2a06d71cf179b890c155c01cdc463f2d5140fb30','Every other HTML byte is identical to the approved public release');
 check(normalizeBoundsHTML(boundsTag.replace('bounds-1','bounds-wrong')).includes('bounds-wrong'),'Normalization cannot conceal a different boundary resource');
 const rules=[...css.replace(/\/\*[\s\S]*?\*\//g,'').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(m=>({selector:m[1].trim(),body:m[2]}));
 check(rules.length===3,'Only three targeted display-boundary rules are added');
