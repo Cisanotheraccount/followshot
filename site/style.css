@@ -625,7 +625,7 @@ html[lang="en"] .takepreview:after{content:'Source footage · Simulated take'}
 .capture-controls>.progress-track{height:3px;margin:0 0 8px}
 .capture-controls .record-row{margin:10px 0 0;min-height:64px}
 .capture-controls .step-guide{margin:0}
-.capture-brief{position:absolute;left:12px;top:90px;max-width:calc(100% - 124px);z-index:2;color:#fff;background:#101010d9;border:1px solid #ffffff50;border-radius:6px;overflow:auto;max-height:calc(100% - 145px)}
+.capture-brief{padding:0;position:absolute;left:12px;top:90px;max-width:calc(100% - 124px);z-index:2;color:#fff;background:#101010d9;border:1px solid #ffffff50;border-radius:6px;overflow:auto;max-height:calc(100% - 145px)}
 .capture-brief>summary{display:flex;justify-content:space-between;align-items:center;gap:18px;list-style:none;padding:8px 10px;min-height:44px;font-size:var(--text-body);font-weight:600;cursor:pointer}
 .capture-brief>summary::-webkit-details-marker{display:none}
 .capture-brief[open]{right:12px;max-width:none;background:#111f}
