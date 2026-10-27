@@ -1,0 +1,12 @@
+{
+  "commit": "98c24af29b70f70c4f5ac7dd22209416a69e094a",
+  "style_prefix_bytes": 51494,
+  "style_prefix_sha256": "5e8e289961500ede418accf25f106efcf3541bf11a0a92f4ca79d31dd856ee42",
+  "unchanged_runtime_sha256": {
+    "site/site-motion.js": "afd24b7cbeead86e710e970715f5423f22af3c45654aa3108d68fbba4cf25925",
+    "site/site-motion.css": "626a5f3c5758f6bd73440a2b3d2e65b58fc1ae0fcabc5c652d2f518bdde2c504",
+    "site/story-section.css": "d459a196553fa8d5baf478039bbc9d8926d0afc9ff973206e10498baff8acd8b"
+  },
+  "outside_why_demo_sha256": "ec0f33991e4059755cbb21aacfe49e7dd0e3a8926bb7ff9fbd346b9f0d6c2097",
+  "why_section_sha256": "728d69bd3bf5477bfa1034a95d841326b12507c91c8217c468c17e66cc4a7ae0"
+}

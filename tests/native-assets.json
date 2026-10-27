@@ -1,0 +1,37 @@
+[
+  {
+    "file": "closed-storyboard.png",
+    "width": 840,
+    "height": 1050,
+    "bytes": 271326,
+    "sha256": "3db596b141f52d66f0eb661e945a9c4a610a5d449ab45ad4eb664f97cb4cd6fa"
+  },
+  {
+    "file": "half-take.png",
+    "width": 1440,
+    "height": 1050,
+    "bytes": 477997,
+    "sha256": "262861afbe1167e23b262165fe23a5a73cdc66f3b539663f4f299c3fc957d98e"
+  },
+  {
+    "file": "open-capture.png",
+    "width": 1440,
+    "height": 1050,
+    "bytes": 700165,
+    "sha256": "ef16389ba15f29b98a36637302d423000bfe05a9bf5d1f4e5a91c8b8440eb5e7"
+  },
+  {
+    "file": "open-editor.png",
+    "width": 1440,
+    "height": 1050,
+    "bytes": 424118,
+    "sha256": "15119095474af32ff9725f84d502b9f534892bee4842d4ef1471f6a289b6c483"
+  },
+  {
+    "file": "open-plan.png",
+    "width": 1440,
+    "height": 1050,
+    "bytes": 730105,
+    "sha256": "b04e76e6ea9baaf2f5f5335b08f014019295814706239a0e4b495b547d4491f3"
+  }
+]

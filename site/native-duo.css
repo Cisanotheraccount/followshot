@@ -1,0 +1,27 @@
+/* Native product evidence: original device frames, never a second phone shell. */
+.native-section{max-width:1400px;margin:0 auto;padding-top:104px;padding-bottom:104px}
+.native-section .native-heading{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);align-items:end;gap:40px;margin:22px 0 36px}
+.native-section h2{margin:0;line-height:1.08;letter-spacing:-1.5px}
+.native-section .native-heading p{margin:0;max-width:390px;justify-self:end;color:#656565;font-size:var(--text-body);line-height:1.65}
+.native-section .native-source{display:flex;align-items:center;gap:8px;margin:0 0 24px;font-size:var(--text-body);color:#676767;line-height:1.4}
+.native-section .native-source:before{content:'';width:7px;height:7px;border-radius:50%;background:#25f4ee;flex-shrink:0}
+.native-section .native-feature{border-top:1px solid #ddd;padding-top:24px}
+.native-section .native-switch{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.native-section .native-switch button{border:1px solid #d9d9d9;border-radius:999px;min-height:44px;padding:10px 18px;font-size:var(--text-body);font-weight:600;background:#fff;color:#555;line-height:1.3;transition:background .15s,color .15s}
+.native-section .native-switch button[aria-pressed="true"]{background:#111;border-color:#111;color:#fff}
+.native-section .native-switch button:hover{border-color:#111}
+.native-section .native-switch button:focus-visible{outline:3px solid #25f4ee;outline-offset:4px}
+.native-section .native-panel{margin:0}
+.native-section .native-panel[hidden]{display:none}
+.native-section .native-main-visual{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;aspect-ratio:1440/1050;max-height:calc(100vh - 140px);background:#fff}
+.native-section .native-main-visual img{display:block;width:100%;height:100%;object-fit:contain}
+.native-section .native-caption{display:flex;gap:24px;align-items:baseline;justify-content:space-between;margin:18px 0 0}
+.native-section h3{font-size:var(--text-subtitle);line-height:1.3;margin:0;color:#111}
+.native-section .native-caption p{margin:0;max-width:520px;color:#666;font-size:var(--text-body);line-height:1.6}
+.native-section .native-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px;margin-top:64px}
+.native-section .native-card{margin:0;padding-top:24px;border-top:1px solid #ddd;min-width:0}
+.native-section .native-card-visual{display:flex;align-items:center;justify-content:center;height:420px;background:#fff;margin-bottom:24px}
+.native-section .native-card-visual img{display:block;width:100%;height:100%;object-fit:contain}
+.native-section .native-card p{margin:12px 0 0;font-size:var(--text-body);line-height:1.6;color:#666}
+@media(max-width:760px){.native-section{padding:64px 24px}.native-section .native-heading{display:block;margin:20px 0 24px}.native-section h2{letter-spacing:-1px;line-height:1.15}.native-section .native-heading p{margin-top:20px;max-width:none}.native-section .native-source{margin-bottom:20px}.native-section .native-feature{padding-top:20px}.native-section .native-switch{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:18px}.native-section .native-switch button{padding:9px 6px}.native-section .native-main-visual{aspect-ratio:1440/1050}.native-section .native-caption{display:block;margin-top:20px}.native-section .native-caption p{margin-top:12px}.native-section .native-details{grid-template-columns:minmax(0,1fr);gap:32px;margin-top:40px}.native-section .native-card-visual{height:auto;aspect-ratio:1/1;margin-bottom:20px}}
+@media(prefers-reduced-motion:reduce){.native-section .native-switch button{transition:none}}

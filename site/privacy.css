@@ -1,0 +1,16 @@
+/* Optional footer disclosure. Analytics never gates content or interaction. */
+#analytics-privacy{margin:0;padding:16px 7% 32px;background:#080808;border-top:1px solid #2b2b2b;border-bottom:0;color:#aaa;font-size:var(--text-body);line-height:1.7}
+#analytics-privacy summary{font-size:var(--text-body);line-height:1.7;font-weight:600;max-width:100%;color:#aaa;gap:20px}
+#analytics-privacy summary::after{content:"+";flex:none}
+#analytics-privacy[open] summary::after{content:"−"}
+#analytics-privacy summary::-webkit-details-marker{display:none}
+#analytics-privacy p{max-width:860px;margin:16px 0;color:#aaa;font-size:var(--text-body);line-height:1.7}
+#analytics-privacy .analytics-privacy-controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px}
+#analytics-privacy-status{font-size:var(--text-body)}
+#analytics-privacy button{font:inherit;font-weight:600;border:1px solid #555;border-radius:4px;background:#161616;color:#fff;padding:9px 16px;min-height:44px}
+#analytics-privacy button:disabled{color:#777;background:#111;cursor:default}
+#analytics-privacy button:focus-visible{outline:3px solid #25f4ee;outline-offset:4px}
+@media(max-width:760px){#analytics-privacy{padding:16px 24px 28px}#analytics-privacy .analytics-privacy-controls{align-items:flex-start;flex-direction:column}}
+#analytics-privacy .privacy-en{display:none}
+html[lang="en"] #analytics-privacy .privacy-en{display:initial}
+html[lang="en"] #analytics-privacy .privacy-zh{display:none}

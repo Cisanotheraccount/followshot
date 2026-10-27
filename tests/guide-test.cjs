@@ -83,6 +83,8 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
   return {
     handlers, timers, elements, storage, interactions, targets,
     advance(ms) { now += ms; },
+    tourNext(ms = 300, force = false) { now += ms; const button = elements['tour-next']; if (button && (force || !button.disabled)) button.onclick?.(); },
+    tourPrev(ms = 300, force = false) { now += ms; const button = elements['tour-prev']; if (button && (force || !button.disabled)) button.onclick?.(); },
     replay() { elements['guide-replay'].onclick(); },
     focusAction(action) { elements.app.querySelector(`[data-action="${action}"]`).focus({preventScroll:true}); },
     tabEdge(last, shiftKey) {
@@ -115,6 +117,8 @@ function createBrowser({storage = {}, language = storage[LANGUAGE_KEY] === 'en' 
   };
 }
 
+module.exports = {createBrowser};
+if (require.main === module) {
 let checks = 0;
 function check(value, message) {
   assert.ok(value, message);
@@ -529,7 +533,8 @@ check(/\.guide-target:after\{[^}]*display:none!important;[^}]*content:none!impor
 check(/\.capture-idle>\.appfooter\{display:none\}/.test(geometry), 'empty camera review footer stays hidden before a Take exists');
 
 const entryStyles=css.slice(css.lastIndexOf('/* Learning is opt-in through Share'));
-check(/\.guide-target\{[^}]*box-shadow:inset 0 0 0 3px #25f4ee!important/.test(fitStyles), 'the final actual-target edge is cyan and inset rather than relying on a clipped outside outline');
+const privateTourStyles=css.slice(css.lastIndexOf('/* Private-preview walkthrough:'));
+check(/\.guide-target\{outline:none!important;box-shadow:none!important\}/.test(privateTourStyles) && /\.guide-focus-ring\{[^}]*border:3px solid #25f4ee;[^}]*pointer-events:none/.test(privateTourStyles), 'the final target uses a detached cyan DOM ring without clipped outline or inset decoration');
 check(/\.learn-entry\{[^}]*background:#f0f0f0;[^}]*border:1px solid #dedede/.test(entryStyles), 'the optional Share feature entry uses a neutral secondary surface');
 check(/\.entry-guide\{[^}]*background:#25f4ee;color:#092b2a;[^}]*font-size:var\(--text-body\)/.test(fitStyles), 'the external first-step introduction is cyan with dark unscaled body text');
 check(/\.entry-guide\[hidden\]\{display:none\}/.test(fitStyles), 'hiding the entry introduction removes its layout space');
@@ -542,3 +547,4 @@ check(/border:1px solid #25f4ee!important;[^}]*padding:8px 10px!important;box-sh
 check(/\.step-guide p\{color:#092b2a\}/.test(cyanStyles) && /\.step-guide \[data-action="guide-skip"\]\{color:#174c4a\}/.test(cyanStyles), 'hint copy and its lone Hide control keep dark foreground colors');
 
 console.log(`ALL ${checks} GUIDE VM TESTS PASSED`);
+}

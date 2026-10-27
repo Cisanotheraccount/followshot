@@ -1,0 +1,37 @@
+// Public presentation checks only. Service implementation and tests stay private.
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const vm=require('node:vm');
+const path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const html=fs.readFileSync(path.join(root,'site/index.html'),'utf8');
+const css=fs.readFileSync(path.join(root,'site/privacy.css'),'utf8');
+const {normalizeFooterHTML,privacy,ids,resourceTags}=require('./footer-normalize.cjs');
+let count=0;const check=(v,label)=>{assert.ok(v,label);count++;console.log('PASS',label)};
+const marked=[...html.matchAll(/<section\b[^>]*data-analytics-section="([^"]+)"[^>]*>/g)];
+check(marked.length===8&&marked.map(m=>m[1]).join(',')===ids.join(','),'The eight presentation markers are unique and ordered');
+const starts=['class="hero"','class="film-feature"','id="why"','id="demo"','id="native-duo"','id="process"','id="design"','class="closing"'];
+marked.forEach((m,i)=>check(m[0].includes(starts[i]),`${ids[i]} marker belongs only to its top-level section`));
+for(const tag of resourceTags)check(html.split(tag).length===2,'Each approved optional presentation resource appears exactly once');
+check(html.includes('</footer>'+privacy),'The disclosure follows the existing footer without replacing it');
+check(!/\bopen\b/.test(privacy.slice(0,privacy.indexOf('>'))),'Disclosure is initially closed');
+check(privacy.includes('type="button" disabled'),'Unavailable optional service cannot leave a misleading active button');
+check(privacy.includes('过期记录在后续请求时清理')&&privacy.includes('expired records are cleared on subsequent requests'),'Both language disclosures describe cleanup accurately');
+check(privacy.includes('页面功能不受影响')&&privacy.includes('The page works normally'),'Static bilingual failure text remains usable when the optional script cannot load');
+check(/html\[lang="en"\] #analytics-privacy \.privacy-en\{display:initial\}/.test(css)&&/html\[lang="en"\] #analytics-privacy \.privacy-zh\{display:none\}/.test(css),'Static disclosure switches languages even when the remote service is unavailable');
+check(!/#demo|\.device|\.native-section|body\{|header\{|position:fixed/.test(css),'Optional footer styling does not change existing page or phone layout');
+check(!/data-analytics-qa|data-endpoint=/.test(html),'Public markup has no debug mode or separate endpoint configuration');
+check(!fs.existsSync(path.join(root,'site/analytics.js'))&&!fs.existsSync(path.join(root,'site/analytics-privacy.js')),'Collector and optional service-control implementation are not copied into the public site');
+check(normalizeFooterHTML(privacy.replace('90','900')).includes('900'),'Normalization cannot hide an altered privacy statement');
+check(normalizeFooterHTML('<section data-analytics-section="unknown">')==='<section data-analytics-section="unknown">','Normalization cannot conceal an unknown presentation marker');
+const loader=resourceTags[1].replace(/^<script[^>]*>/,'').replace(/<\/script>$/,'');
+function run(readyState){const appended=[],listeners={};const document={readyState,createElement:tag=>{assert.equal(tag,'script');return{}},head:{appendChild:node=>appended.push(node)}};const window={addEventListener:(name,fn,opts)=>{listeners[name]={fn,opts}}};vm.runInNewContext(loader,{document,window});return{appended,listeners};}
+const loading=run('loading');
+check(loading.appended.length===0,'No external request can delay the initial document and media loading');
+check(Object.keys(loading.listeners).join(',')==='load'&&loading.listeners.load.opts.once,'Optional loading waits until the original page load has completed');
+loading.listeners.load.fn();
+check(loading.appended.length===1&&loading.appended[0].async===true,'The optional external script is explicitly asynchronous');
+check(loading.appended[0].referrerPolicy==='no-referrer','Optional request omits the page referrer');
+check(!('onload' in loading.appended[0])&&!('onerror' in loading.appended[0]),'External completion/failure cannot redirect or alter the original app');
+check(run('complete').appended.length===1,'Already-loaded documents initialize the optional service without blocking');
+console.log(`PASS ${count} footer-presentation assertions`);
