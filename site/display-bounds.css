@@ -1,0 +1,4 @@
+/* Explicit geometry for scaled screen clipping and complete native-device images. */
+#demo .device{overflow:hidden;isolation:isolate;-webkit-clip-path:inset(0 round 48px);clip-path:inset(0 round 48px)}
+#native-duo .native-main-visual{height:min(560px,calc(100vh - 260px));height:min(560px,calc(100svh - 260px));min-height:180px;max-height:none;aspect-ratio:auto}
+#native-duo .native-main-visual img{width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;flex:0 1 auto}
