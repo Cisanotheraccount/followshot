@@ -39,3 +39,114 @@
   window.addEventListener('followshot-language-change', label);
   label();
 })();
+
+/* Short editorial motion inspired by the public About page's stepped media.
+   Progressive enhancement only: the simulator, its guide and its focus order
+   are deliberately outside this controller. No pinning or scroll interception. */
+(() => {
+  'use strict';
+  if (!document.querySelector || !window.requestAnimationFrame) return;
+  const hero = document.querySelector('.hero');
+  const featureHeading = document.querySelector('.feature-heading');
+  const player = document.querySelector('.feature-player');
+  const root = document.documentElement;
+  if (!hero || !root) return;
+  const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const button = document.getElementById('motion-toggle');
+  const reveals = [];
+  const clamp = value => Math.max(0, Math.min(1, value));
+  let frame = 0;
+  let paused = false;
+  let observer;
+  let lastHero = '';
+  let lastFilm = '';
+
+  const groups = [
+    '.feature-heading > *',
+    '.why > .eyebrow, .why .split > *',
+    '#process > .eyebrow, #process > .section-title',
+    '.storyboard > article',
+    '.design > .eyebrow, .design > h2',
+    '.design-grid > article',
+    '.closing > .eyebrow, .closing > h2'
+  ];
+  groups.forEach(selector => {
+    document.querySelectorAll(selector).forEach((node, index) => {
+      node.classList.add('motion-reveal');
+      node.style.setProperty('--reveal-delay', `${Math.min(index, 3) * 70}ms`);
+      reveals.push(node);
+    });
+  });
+
+  function reset() {
+    if (frame) window.cancelAnimationFrame(frame);
+    frame = 0;
+    hero.style.removeProperty('--hero-progress');
+    player?.style.removeProperty('--film-progress');
+    root.classList.remove('site-motion-ready');
+    lastHero = lastFilm = '';
+    reveals.forEach(node => node.classList.add('is-revealed'));
+  }
+
+  function update() {
+    frame = 0;
+    if (preference.matches || paused || document.hidden) return;
+    // Read untransformed section geometry before writing any style values.
+    const viewport = Math.max(window.innerHeight || 0, 1);
+    const heroRect = hero.getBoundingClientRect();
+    const headingRect = featureHeading?.getBoundingClientRect();
+    const heroProgress = clamp((-heroRect.top + 80) / Math.max(heroRect.height * .72, 1)).toFixed(4);
+    const filmProgress = headingRect ? clamp((viewport * .95 - headingRect.bottom) / (viewport * .72)).toFixed(4) : '1';
+    if (heroProgress !== lastHero) {
+      hero.style.setProperty('--hero-progress', heroProgress);
+      lastHero = heroProgress;
+    }
+    if (player && filmProgress !== lastFilm) {
+      player.style.setProperty('--film-progress', filmProgress);
+      lastFilm = filmProgress;
+    }
+  }
+
+  function schedule() {
+    if (frame || preference.matches || paused || document.hidden) return;
+    frame = window.requestAnimationFrame(update);
+  }
+
+  function configure() {
+    if (preference.matches || paused) { reset(); return; }
+    root.classList.add('site-motion-ready');
+    schedule();
+  }
+
+  if ('IntersectionObserver' in window) {
+    try {
+      observer = new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-revealed');
+          observer.unobserve(entry.target);
+        });
+      }, {threshold:.08, rootMargin:'0px 0px -24px 0px'});
+      reveals.forEach(node => observer.observe(node));
+    } catch (_) {
+      reveals.forEach(node => node.classList.add('is-revealed'));
+    }
+  } else reveals.forEach(node => node.classList.add('is-revealed'));
+
+  window.addEventListener('scroll', schedule, {passive:true});
+  window.addEventListener('resize', schedule, {passive:true});
+  window.addEventListener('pageshow', schedule);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && frame) { window.cancelAnimationFrame(frame); frame = 0; }
+    else schedule();
+  });
+  if (preference.addEventListener) preference.addEventListener('change', configure);
+  else preference.addListener?.(configure);
+  // The existing controller updates this button first. An explicit pause also
+  // stops decorative choreography, without changing playback or saved drafts.
+  button?.addEventListener('click', () => {
+    paused = button.getAttribute('aria-pressed') === 'false';
+    configure();
+  });
+  configure();
+})();
