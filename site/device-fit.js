@@ -9,6 +9,7 @@
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   let pending = false;
   let locate = false;
+  let layoutChanged = false;
   function fit() {
     pending = false;
     const viewport = window.visualViewport;
@@ -22,10 +23,17 @@
     stage.style.height = (844 * scale) + 'px';
     device.style.transform = 'scale(' + scale + ')';
     document.documentElement.style.setProperty('--demo-header-height', headerHeight + 'px');
-    if (locate) {
+    const rect = wrap.getBoundingClientRect();
+    const bottom = rect.top + guideHeight + 844 * scale;
+    const partlyVisible = bottom > headerHeight && rect.top < height;
+    const clipped = rect.top < headerHeight + 12 || bottom > height - 12;
+    const recoverLayout = layoutChanged && partlyVisible && clipped;
+    layoutChanged = false;
+    if (locate || recoverLayout) {
+      const explicit = locate;
       locate = false;
       const top = window.scrollY + wrap.getBoundingClientRect().top - headerHeight - 16;
-      window.scrollTo({top: Math.max(0, top), behavior: reduced.matches ? 'auto' : 'smooth'});
+      window.scrollTo({top: Math.max(0, top), behavior: !explicit || reduced.matches ? 'auto' : 'smooth'});
     }
   }
   function schedule() {
@@ -40,7 +48,7 @@
     showDevice();
   }));
   addEventListener('followshot:locate', showDevice);
-  addEventListener('followshot:layout', schedule);
+  addEventListener('followshot:layout', () => { layoutChanged = true; schedule(); });
   addEventListener('resize', schedule);
   addEventListener('orientationchange', schedule);
   window.visualViewport?.addEventListener('resize', schedule);

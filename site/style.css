@@ -662,3 +662,6 @@ html{scroll-padding-top:calc(var(--demo-header-height,112px) + 16px)}
 .learn-entry.guide-target{border-color:#25f4ee;background:#e5fffe;color:#102a29}
 @media(min-width:761px) and (max-height:850px){header{min-height:76px;padding-top:12px;padding-bottom:12px}.demo-intro h2{font-size:40px;line-height:1.15;margin:18px 0}.demo-intro>p{margin:14px 0}.journey{margin:20px 0;gap:8px 20px}.demo-notice{line-height:1.5}.demo-intro #reset{margin-top:10px}.guide-replay{margin-top:12px}}
 @media(max-width:760px){.demo-section{padding:16px 12px 32px;gap:28px}.device-wrap{order:-1}.entry-guide{padding:10px 34px 10px 12px}.demo-intro{padding:0 12px}}
+
+/* Prevent browser scroll anchoring from following replaced simulator content. */
+.demo-section{overflow-anchor:none}
