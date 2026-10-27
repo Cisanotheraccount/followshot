@@ -80,7 +80,7 @@ function createMotion({reduced = false, intersection = true, omitFeature = false
 
 function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
   const handlers = {}, elements = {}, timers = new Map(), storage = {};
-  let sequence = 0, markup = '', videos = [], observer, locale = language;
+  let sequence = 0, markup = '', videos = [], captureBrief = null, observer, locale = language;
   function element() {
     const node = target();
     Object.assign(node, {innerHTML:'',style:{},children:[],dataset:{},hidden:true,
@@ -91,6 +91,8 @@ function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
     return node;
   }
   function parseVideos() {
+    const details = markup.match(/<details\b([^>]*\bclass="capture-brief"[^>]*)>/);
+    captureBrief = details ? Object.assign(element(), {open: /(?:^|\s)open(?:\s|=|$)/.test(details[1])}) : null;
     videos = [...markup.matchAll(/<video\b([^>]*)>/g)].map(match => {
       const video = element(), attrs = {};
       for (const item of match[1].matchAll(/([\w-]+)(?:="([^"]*)")?/g)) attrs[item[1]] = item[2] ?? '';
@@ -108,7 +110,7 @@ function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
   app.insertAdjacentHTML = (_position,value) => {markup+=value;parseVideos();app.lastElementChild=element();};
   app.addEventListener = (name,callback) => {handlers[name]=callback;};
   app.querySelectorAll = selector => selector === 'video[data-reference-video]' ? videos : [];
-  app.querySelector = selector => elements[selector] ??= element();
+  app.querySelector = selector => selector === '.capture-brief' ? captureBrief : (elements[selector] ??= element());
   elements.app = app;
   const document = target(); document.hidden=false; document.activeElement=null;
   document.getElementById = id => ['feed-video','preview-video'].includes(id) ? videos.find(video=>video.attributes.id===id)||null : (elements[id]??=element());
@@ -123,7 +125,8 @@ function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
   context.window=context;vm.createContext(context);
   vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8'),context,{filename:'app.js'});
   return {
-    get html(){return markup;}, get videos(){return videos;}, elements, storage,
+    get html(){return markup;}, get videos(){return videos;}, get brief(){return captureBrief;}, elements, storage,
+    setTip(value,id=1){handlers.input({target:{dataset:{tip:String(id)},value}});},
     video(role){return videos.find(video=>video.dataset.role===role);},
     click(action,data={}){handlers.click({target:{closest:()=>({dataset:{action,...data},disabled:false})}});},
     go(screen){handlers.click({target:{closest:()=>({dataset:{go:screen},disabled:false})}});},
@@ -132,6 +135,62 @@ function createSimulatorMedia({reduced = false, language = 'en'} = {}) {
     hidden(value){document.hidden=value;document.emit('visibilitychange');},
     language(value){locale=value;handlers['window:followshot-language-change']?.();}
   };
+}
+
+// Balanced same-tag extraction tests rendered nesting rather than only string order.
+function container(markup, className, tag = 'div') {
+  const tokens = [...markup.matchAll(new RegExp(`<\/?${tag}\\b[^>]*>`, 'g'))];
+  const first = tokens.findIndex(token => !token[0].startsWith('</') && (token[0].match(/\bclass="([^"]*)"/)?.[1] || '').split(/\s+/).includes(className));
+  if (first < 0) return '';
+  let depth = 0;
+  for (let index = first; index < tokens.length; index++) {
+    depth += tokens[index][0].startsWith('</') ? -1 : 1;
+    if (!depth) return markup.slice(tokens[first].index, tokens[index].index + tokens[index][0].length);
+  }
+  return '';
+}
+
+function cameraLayoutChecks() {
+  const sim = createSimulatorMedia();
+  sim.click('share');sim.click('learn');sim.click('use-preset');sim.click('start-capture');
+  const stage = container(sim.html, 'capture-stage');
+  const camera = container(stage, 'camera'), dock = container(stage, 'capture-controls');
+  check(Boolean(stage && camera && dock), 'Capture has a separate portrait-media region and control dock inside its stage');
+  check(stage.indexOf(camera) < stage.indexOf(dock) && !camera.includes(dock), 'The control dock follows the camera as a sibling, not an overlay inside it');
+  check(camera.includes('data-role="capture"') && !dock.includes('<video'), 'Real source video belongs only to the image region');
+  check(!/class="(?:step-guide|record-row)"|data-action="record"/.test(camera), 'The image region has no recording row or contextual guide over the footage');
+  check(dock.includes('class="step-guide"') && dock.includes('class="record-row"') && dock.indexOf('class="step-guide"') < dock.indexOf('class="record-row"'), 'The compact guide sits in the control dock immediately before the real record row');
+  check((dock.match(/data-action="record"/g)||[]).length === 1 && !/guide-next|guide-locate/.test(dock), 'The separated dock keeps one Record action and no duplicate navigation');
+  check(camera.includes('class="reference-thumb"') && camera.includes('data-action="reference"') && camera.includes('media/shot1.jpg'), 'The familiar source thumbnail and full-reference action remain in the camera');
+  const brief = container(camera, 'capture-brief', 'details');
+  check(brief.includes('<summary>') && brief.includes('Filming tip') && !brief.includes('拍摄提示'), 'Native details has an English-translated accessible filming-tip summary');
+  check(!sim.brief.open && !/<details[^>]*\sopen(?:\s|>)/.test(brief), 'The shot brief starts collapsed so it does not cover the portrait footage by default');
+  check(brief.includes('SHOT 01') && brief.includes('Medium · Human moment') && brief.includes('Capture the feeling'), 'The collapsed brief retains full shot number, framing and title metadata');
+  check(brief.includes('Frame a natural interaction, keep the camera steady, and leave room for the setting.'), 'The complete English shot instruction remains available inside native details');
+  sim.brief.open = true;sim.language('zh');
+  check(sim.brief.open && /<details[^>]*\sopen(?:\s|>)/.test(sim.html) && sim.html.includes('<span>拍摄提示</span>'), 'Opening the native brief survives a Chinese language rerender');
+  sim.click('grid');
+  check(sim.brief.open, 'An open shot brief survives the Grid control rerender');
+  sim.click('reference');
+  check(sim.brief.open && sim.video('reference')?.attributes.controls !== undefined, 'An open brief is retained while the full native reference player is shown');
+  sim.click('close-overlay');
+  check(sim.brief.open, 'Returning from the reference preserves the expanded shot brief');
+  sim.brief.open = false;sim.language('en');
+  check(!sim.brief.open && !/<details[^>]*\sopen(?:\s|>)/.test(sim.html), 'A user-collapsed brief stays collapsed across subsequent rerenders');
+  sim.go('plan');
+  const authored = '我的拍摄提示 / Keep <every> word & the complete action, with room for the people and setting.';
+  const escaped = authored.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+  sim.setTip(authored);sim.click('start-capture');
+  check(container(sim.html,'capture-brief','details').includes(`<p>${escaped}</p>`), 'The full authored tip is preserved and HTML-escaped rather than shortened for the portrait layout');
+  sim.brief.open = true;sim.language('zh');sim.language('en');
+  check(sim.brief.open && container(sim.html,'capture-brief','details').includes(`<p>${escaped}</p>`), 'Open-state preservation and repeated language changes never translate or truncate authored instructions');
+  check(JSON.parse(sim.storage['followshot-demo-v1']).shots[0].tip === authored, 'The persisted creator instruction remains exactly unchanged');
+  const portraitCSS = css.slice(css.lastIndexOf('/* Portrait-first camera:'));
+  check(/\.capture-stage\{[^}]*flex:1;[^}]*min-height:0;[^}]*display:flex;[^}]*flex-direction:column/.test(portraitCSS), 'Camera stage CSS allocates remaining portrait space vertically');
+  check(/\.capture-stage \.camera,html\[lang="en"\] \.capture-stage \.camera\{[^}]*flex:1;[^}]*height:auto!important;[^}]*min-height:0!important/.test(portraitCSS), 'Both languages use flexible camera height rather than a fixed short crop');
+  check(/\.capture-stage \.camera>video\{object-fit:contain\}/.test(portraitCSS), 'Camera source CSS explicitly uses contain to retain the full video frame');
+  check(/\.capture-controls\{flex-shrink:0;/.test(portraitCSS), 'Control dock CSS cannot shrink into the media region');
+  check(/\.capture-brief\{[^}]*overflow:auto;[^}]*max-height:/.test(portraitCSS), 'Expanded full instructions have a bounded scrollable region instead of discarded overflow');
 }
 
 function simulatorMediaChecks() {
@@ -241,5 +300,6 @@ function simulatorMediaChecks() {
   createMotion({omitHero:true}); createMotion({omitButton:true});
   check(true, 'Absent optional hero elements do not break other page scripts');
   simulatorMediaChecks();
+  cameraLayoutChecks();
   console.log(`PASS ${checks} real-media markup and motion assertions`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

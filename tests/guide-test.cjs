@@ -433,4 +433,10 @@ const entryStyles=css.slice(css.lastIndexOf('/* Learning is opt-in through Share
 check(/\.guide-target\{[^}]*box-shadow:inset 0 0 0 2px rgba\(255,255,255,\.85\)!important/.test(entryStyles), 'opted-in targets use an inset white edge rather than relying on a clipped outside outline');
 check(/\.learn-entry\{[^}]*background:#f0f0f0;[^}]*border:1px solid #dedede/.test(entryStyles), 'the optional Share feature entry uses a neutral secondary surface');
 
+// These check source styling contracts only; computed geometry remains browser QA.
+const cyanStyles=css.slice(css.lastIndexOf('/* Approved higher-visibility TikTok cyan'));
+check(/\.step-guide,\.appfooter>\.step-guide,\.capture-controls>\.step-guide\{[^}]*background:#25f4ee;color:#092b2a;/.test(cyanStyles), 'contextual hints use the approved cyan surface and dark text in every dock');
+check(/border:1px solid #25f4ee!important;[^}]*padding:8px 10px!important;box-shadow:none/.test(cyanStyles), 'cyan hints remain compact without a large shadow panel');
+check(/\.step-guide p\{color:#092b2a\}/.test(cyanStyles) && /\.step-guide \[data-action="guide-skip"\]\{color:#174c4a\}/.test(cyanStyles), 'hint copy and its lone Hide control keep dark foreground colors');
+
 console.log(`ALL ${checks} GUIDE VM TESTS PASSED`);
