@@ -42,23 +42,26 @@
     requestAnimationFrame(fit);
   }
   function showDevice() { locate = true; schedule(); }
+  function layout() { layoutChanged = true; schedule(); }
   document.querySelectorAll('a[href="#demo"]').forEach(link => link.addEventListener('click', event => {
     event.preventDefault();
     if (location.hash !== '#demo') history.replaceState(null, '', '#demo');
     showDevice();
   }));
   addEventListener('followshot:locate', showDevice);
-  addEventListener('followshot:layout', () => { layoutChanged = true; schedule(); });
-  addEventListener('resize', schedule);
-  addEventListener('orientationchange', schedule);
-  window.visualViewport?.addEventListener('resize', schedule);
+  addEventListener('followshot:layout', layout);
+  addEventListener('followshot-language-change', layout);
+  addEventListener('load', layout);
+  addEventListener('resize', layout);
+  addEventListener('orientationchange', layout);
+  window.visualViewport?.addEventListener('resize', layout);
   if (typeof ResizeObserver === 'function') {
-    const observer = new ResizeObserver(schedule);
+    const observer = new ResizeObserver(layout);
     observer.observe(wrap);
     if (guide) observer.observe(guide);
     if (header) observer.observe(header);
   }
-  document.fonts?.ready.then(schedule);
+  document.fonts?.ready.then(layout);
   if (location.hash === '#demo') locate = true;
   schedule();
 })();
