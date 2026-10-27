@@ -487,14 +487,15 @@ const focusCalls=[...focusSource.matchAll(/\.focus(?:\?\.)?\s*\(\s*([^)]*)\)/g)]
 check(focusCalls.length>=8, 'focus regression covers guide, modal, restore, keyboard trap, and language call sites');
 focusCalls.forEach((call,index)=>check(/preventScroll\s*:\s*true/.test(call[1]), `programmatic focus call ${index+1} explicitly prevents native viewport scrolling`));
 const focusBrowser=createBrowser();
-function fixedViewportFocus(action, name) {
+function fixedViewportFocus(action, name, expectedLocations = 0) {
   const before=focusBrowser.interactions.length;
   action();
   const events=focusBrowser.interactions.slice(before);
   const focuses=events.filter(event=>event[0]==='focus');
   check(focuses.length>0, `${name} keeps meaningful keyboard focus`);
   check(focuses.every(event=>event[2]?.preventScroll===true), `${name} never lets native focus scroll the oversized internal canvas`);
-  check(!events.some(event=>event[0]==='scroll'||(event[0]==='event'&&event[1]==='followshot:locate')), `${name} does not add a competing page-location operation`);
+  const locations=events.filter(event=>event[0]==='event'&&event[1]==='followshot:locate');
+  check(!events.some(event=>event[0]==='scroll') && locations.length===expectedLocations, expectedLocations ? `${name} intentionally locates the complete phone exactly once without centering an inner control` : `${name} does not add a competing page-location operation`);
 }
 fixedViewportFocus(()=>focusBrowser.click('share'),'opening Share');
 shareMenu(focusBrowser,'Share after non-scrolling modal focus');
@@ -507,9 +508,12 @@ fixedViewportFocus(()=>check(focusBrowser.tabEdge(false,true),'Shift+Tab at the 
 check(focusBrowser.interactions.filter(event=>event[0]==='focus').at(-1)[1]==='dialog-last','reverse focus trap lands on the last modal control');
 fixedViewportFocus(()=>focusBrowser.click('close-overlay'),'cancelling Share');
 normalFeed(focusBrowser,'Reference after non-scrolling Share cancel');
-fixedViewportFocus(()=>focusBrowser.elements.reset.onclick(),'opening reset confirmation');
+const beforeResetFocusState=stateData(focusBrowser);
+fixedViewportFocus(()=>focusBrowser.elements.reset.onclick(),'opening reset confirmation',1);
+check(stateData(focusBrowser)===beforeResetFocusState,'locating the reset dialog does not reset or change simulator state');
 confirmationOnly(focusBrowser,'reset-confirmed','reset after non-scrolling modal focus');
 fixedViewportFocus(()=>focusBrowser.click('close-overlay'),'cancelling reset confirmation');
+check(stateData(focusBrowser)===beforeResetFocusState,'cancelling the located reset dialog preserves simulator state');
 normalFeed(focusBrowser,'Reference after non-scrolling reset cancel');
 
 const css=fs.readFileSync(path.resolve(__dirname,'../site/style.css'),'utf8');
