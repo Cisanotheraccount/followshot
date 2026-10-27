@@ -1,3 +1,4 @@
+const {normalizeBoundsHTML}=require('./display-bounds-normalize.cjs');
 // Remove only the separately approved, precisely tested optional footer integration.
 const fs=require('node:fs');
 const path=require('node:path');
@@ -8,7 +9,7 @@ const resourceTags=[
   fs.readFileSync(path.join(__dirname,'optional-loader.html'),'utf8').trimEnd()
 ];
 function normalizeFooterHTML(html){
-  let value=html.replace(privacy,'');
+  let value=normalizeBoundsHTML(html).replace(privacy,'');
   for(const tag of resourceTags)value=value.replace(tag,'');
   for(const id of ids)value=value.replace(' data-analytics-section="'+id+'"','');
   return value;
